@@ -2118,6 +2118,41 @@ function renderCustScreen(step){
           '<div style="font-size:32px;font-weight:800;color:var(--brand);letter-spacing:-1px">₪'+fee+'</div></span>'+
         '<span style="width:48px;height:48px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center">'+ico('coins')+'</span>'+
       '</div></div>'+
+      // Trust criteria — what determined the score
+      (function(){
+        var hasBldg=!!(bk.parsed&&bk.parsed.building);
+        var hasLm=landmarks.length>0;
+        var hasPin=confPct>=75;
+        var hasOfficial=!!offNeigh;
+        var hasHistory=tierNum<=2;
+        var hasNeighbor=tierNum===2;
+        var engineAI=bk.engine==='llm'||bk.engine==='llm-cache';
+        var criteria=[
+          {label:LANG==='ar'?'تحليل بالذكاء الاصطناعي':'AI parsing',         on:engineAI,   icon:'🧠'},
+          {label:LANG==='ar'?'تحديد المبنى':'Building identified',            on:hasBldg,    icon:'🏠'},
+          {label:LANG==='ar'?'معالم مطابقة':'Landmarks matched',              on:hasLm,      icon:'📍'},
+          {label:LANG==='ar'?'تأثير الجار (مبنى مثبّت)':'Neighbor effect',    on:hasNeighbor,icon:'🏘️'},
+          {label:LANG==='ar'?'سجل توصيلات سابقة':'Delivery history',          on:hasHistory, icon:'📦'},
+          {label:LANG==='ar'?'عنوان رسمي من البلدية':'Official municipal address', on:hasOfficial,icon:'🏛'},
+          {label:LANG==='ar'?'موقع مثبّت على الخريطة':'Location pinned on map', on:hasPin,    icon:'✅'},
+        ];
+        var passCount=criteria.filter(function(c){return c.on;}).length;
+        return '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:14px">'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+            '<span style="font-size:18px">🛡</span>'+
+            '<b style="font-size:15px">'+(LANG==='ar'?'معايير ثقة العنوان':'Address trust criteria')+'</b>'+
+            '<span class="pill '+(passCount>=5?'good':passCount>=3?'warn':'bad')+'" style="margin-inline-start:auto;font-size:12px">'+passCount+'/7</span>'+
+          '</div>'+
+          criteria.map(function(c){
+            return '<div class="row" style="margin-bottom:5px;font-size:13px">'+
+              '<span style="display:flex;align-items:center;gap:6px">'+
+                '<span style="font-size:14px">'+c.icon+'</span>'+
+                '<span'+(c.on?'':' style="color:var(--text-3)"')+'>'+c.label+'</span></span>'+
+              '<span style="font-size:14px">'+(c.on?'<span style="color:var(--success-ink)">✓</span>':'<span style="color:var(--text-3)">—</span>')+'</span>'+
+            '</div>';
+          }).join('')+
+        '</div></div>';
+      })()+
       // Points earned this order
       '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid rgba(16,185,129,.2)"><div class="card-bd" style="padding:14px">'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
