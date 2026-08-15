@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f5f7fb">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <title>Wusool AI</title>
@@ -1852,6 +1854,8 @@ async function runAnalyse(){
                 .filter(Boolean).join(LANG==='ar'?'، ':', ');
       const full=liveLog(res);
       c.log=[]; let i=0;
+      // Re-render phone screen with the parsed data
+      if(typeof renderCustScreen==='function') renderCustScreen(S.c.step||2);
       c.logTimer=setInterval(()=>{
         if(i>=full.length){clearInterval(c.logTimer);c.logTimer=null;renderEngine();return;}
         c.log.push(full[i++]);renderEngine();
@@ -1953,8 +1957,216 @@ function renderCustomer(){
   const c=S.c,step=c.step||1;
   const bodies=[stepAddress,stepUnderstand,stepConfirm,stepPrice];
   $('#panel-customer').innerHTML=
-    '<div class="stage">'+stepperHtml(step)+bodies[step-1]()+'</div>';
+    '<div class="stage wide" style="display:grid;grid-template-columns:auto minmax(320px,1fr);gap:36px;align-items:start">'+
+      '<div class="device"><div class="screen" id="c-screen"></div></div>'+
+      '<div><div class="tabs" id="c-tabs">'+
+        tabBtn('details',c.sideTab||'details','brain',LANG==='ar'?'التفاصيل':'Details')+
+        tabBtn('sdk',c.sideTab||'details','code',LANG==='ar'?'SDK':'SDK')+
+      '</div><div id="c-side"></div></div>'+
+    '</div>';
+  $$('#c-tabs [data-tab]').forEach(b=>b.onclick=()=>{
+    S.c.sideTab=b.dataset.tab;
+    $$('#c-tabs [data-tab]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.tab===S.c.sideTab)));
+    renderCustSide();
+  });
+  renderCustScreen(step);
+  renderCustSide();
   [wireAddress,wireUnderstand,wireConfirm,wirePrice][step-1]();
+}
+function renderCustScreen(step){
+  const c=S.c, sc=$('#c-screen');
+  if(!sc) return;
+
+  // Notch — same style as driver
+  let h='<div class="notch"><span class="mono">'+
+    new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:false})+'</span>'+
+    '<span class="sig">'+ico('wifi')+'<span class="mono">4G</span>'+ico('battery')+'</span></div>';
+  h+='<div class="screen-body" id="c-body"></div>';
+  sc.innerHTML=h;
+
+  const b=$('#c-body');
+  const confPct=c.conf||0;
+  const p=c.parsed||{segments:[],entities:{}};
+
+  if(step===1){
+    b.innerHTML=
+      // Address input card
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
+        '<div class="flexrow" style="margin-bottom:8px">'+ico('pin')+'<b style="font-size:14px">'+(LANG==='ar'?'عنوان التوصيل':'Delivery address')+'</b></div>'+
+        '<textarea id="addr-in" class="field" rows="3" style="font-size:15px;line-height:1.7;resize:none;border-radius:12px" placeholder="'+
+          esc(LANG==='ar'?'رام الله، قرب المسجد، عمارة زيدان، ط٣':'Ramallah, near the mosque...')+'">'+esc(c.text)+'</textarea>'+
+      '</div></div>'+
+      // Resolve button
+      '<button class="btn primary block" id="phone-go">'+ico('brain')+(LANG==='ar'?' حلّل العنوان':' Resolve')+'</button>';
+
+  } else if(step===2){
+    const tagHtml=(p.segments||[]).map(s=>{
+      const lab={city:'eCity',landmark:'eLandmark',prep:'ePrep',building:'eBuilding',micro:'eMicro',plain:'eOther'}[s.type]||'eOther';
+      return '<span class="tok '+s.type+'" style="font-size:13px"><span class="lbl" style="font-size:9px">'+t(lab)+'</span>'+esc(s.text)+'</span>';
+    }).join('');
+
+    b.innerHTML=
+      // Confidence + engine badge
+      (c.analysed?'<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
+        '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:flex;align-items:center;justify-content:center;'+
+          'background:'+(confPct>=80?'var(--success-soft)':confPct>=60?'var(--warning-soft)':'var(--danger-soft)')+';'+
+          'color:'+(confPct>=80?'var(--success-ink)':confPct>=60?'var(--warning-ink)':'var(--danger-ink)')+'">'+ico('gauge')+'</span>'+
+        '<span style="flex:1"><b class="mono" style="font-size:19px">'+confPct+'%</b>'+
+          '<div class="dim" style="font-size:12px">'+(LANG==='ar'?'مستوى الثقة':'Confidence level')+'</div></span>'+
+        '<span class="pill '+(c.backend?.engine==='rules'?'neutral':'info')+'" style="font-size:11px">'+
+          (c.backend?.engine||'rules')+'</span>'+
+      '</div></div>':'')+
+      // Stats row
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
+        miniStat('pin',LANG==='ar'?'الطبقة':'Tier','T'+(c.backend?.tier||'?'))+
+        miniStat('brain',LANG==='ar'?'الحالة':'Status',
+          c.backend?.status==='resolved'?(LANG==='ar'?'محلول':'Resolved'):
+          c.backend?.status==='estimated'?(LANG==='ar'?'تقريبي':'Estimated'):
+          (LANG==='ar'?'يحتاج تثبيت':'Needs pin'))+
+        miniStat('zap',LANG==='ar'?'كيانات':'Entities',String((c.backend?.matched_entities||[]).length))+
+      '</div>'+
+      // Entity tags
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
+        '<span class="eyebrow" style="margin-bottom:6px">'+(LANG==='ar'?'الكيانات المستخرجة':'Extracted entities')+'</span>'+
+        '<div class="tagline" style="gap:6px;flex-wrap:wrap">'+tagHtml+'</div>'+
+      '</div></div>'+
+      // Official address card (cadastral)
+      (c.backend?.official?.neighborhood?
+        '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid rgba(109,40,217,.15)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
+          '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:linear-gradient(135deg,rgba(90,134,255,.12),rgba(109,40,217,.12));'+
+            'color:#6d28d9;display:flex;align-items:center;justify-content:center;font-size:18px">🏛</span>'+
+          '<span style="flex:1"><b style="font-size:15px;color:#6d28d9">'+esc(c.backend.official.neighborhood)+'</b>'+
+            '<div class="dim" style="font-size:11px">'+(LANG==='ar'?'العنوان الرسمي — بلدية رام الله':'Official — Ramallah Municipality')+'</div></span>'+
+        '</div></div>':'')+
+      // Navigation buttons
+      '<div style="display:flex;gap:8px;margin-top:auto;padding-top:4px">'+
+        '<button class="btn ghost" data-go="1" style="flex:1">'+ico('arrowRight')+(LANG==='ar'?' رجوع':' Back')+'</button>'+
+        '<button class="btn primary" data-go="3" style="flex:2">'+ico('sat')+(LANG==='ar'?' للخريطة':' Map')+'</button></div>';
+
+  } else if(step===3){
+    b.innerHTML=
+      // Map
+      '<div class="mapbox" style="height:280px;flex:0 0 280px">'+
+        (c.backend&&c.backend.lat?'<div id="real-map" style="width:100%;height:100%"></div>'
+          :'<canvas id="cust-map" style="width:100%;height:100%"></canvas>')+
+      '</div>'+
+      // Address summary card
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;display:flex;flex-direction:column;gap:8px">'+
+        '<div class="flexrow">'+
+          '<span class="pill '+(confPct>=80?'good':confPct>=60?'warn':'bad')+'">'+ico('shield')+(LANG==='ar'?'ثقة ':'conf ')+confPct+'%</span>'+
+          (c.backend?.official?.neighborhood?'<span class="pill info">🏛 '+esc(c.backend.official.neighborhood)+'</span>':'')+
+        '</div>'+
+        '<div style="font-size:13px;line-height:1.5">'+esc(c.text.slice(0,80))+'</div>'+
+      '</div></div>'+
+      // Micro-location input
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
+        '<span class="eyebrow" style="margin-bottom:6px">'+ico('door')+' '+(LANG==='ar'?'تفاصيل الوصول':'Door details')+'</span>'+
+        '<input id="micro-in" class="field" style="font-size:14px;border-radius:10px" placeholder="'+esc(t('microPh'))+'" value="'+esc(c.micro)+'">'+
+      '</div></div>'+
+      // Buttons
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn ghost" data-go="2" style="flex:1">'+ico('arrowRight')+(LANG==='ar'?' رجوع':' Back')+'</button>'+
+        '<button class="btn primary" data-go="4" style="flex:2">'+ico('check')+(LANG==='ar'?' تأكيد المبنى':' Confirm')+'</button></div>';
+
+  } else {
+    b.innerHTML=
+      // Price summary
+      '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid var(--brand-faint)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
+        '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:var(--brand-soft);'+
+          'color:var(--brand);display:flex;align-items:center;justify-content:center">'+ico('coins')+'</span>'+
+        '<span style="flex:1"><b class="mono" style="font-size:22px">₪'+(confPct>=80?'14':confPct>=60?'17':'20')+'</b>'+
+          '<div class="dim" style="font-size:12px">'+(LANG==='ar'?'أجرة التوصيل':'Delivery fee')+'</div></span>'+
+      '</div></div>'+
+      // Trust factors
+      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'+
+        miniStat('shield',LANG==='ar'?'الثقة':'Trust',confPct+'%')+
+        miniStat('pin',LANG==='ar'?'الطبقة':'Tier','T'+(c.backend?.tier||'?'))+
+      '</div>'+
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;font-size:13px;line-height:1.6;color:var(--text-2)">'+
+        (LANG==='ar'
+          ?'كل ما زادت ثقة العنوان، نزلت أجرة الشحن. تأكيد المبنى مرة واحدة بيخفّض السعر لكل الجيران.'
+          :'Higher address trust means lower delivery fees. Confirming a building once lowers the price for every neighbor.')+
+      '</div></div>'+
+      // Buttons
+      '<div style="display:flex;gap:8px;margin-top:auto;padding-top:4px">'+
+        '<button class="btn ghost" data-go="3" style="flex:1">'+ico('arrowRight')+(LANG==='ar'?' رجوع':' Back')+'</button>'+
+        '<button class="btn good block" data-go="0" style="flex:2">'+ico('checkCircle')+(LANG==='ar'?' اطلب الآن':' Order now')+'</button></div>';
+  }
+  // Wire all buttons inside the phone screen
+  $$('#c-screen [data-go]').forEach(b=>b.onclick=()=>{
+    const target=+b.dataset.go;
+    if(target===0){/* order button — could trigger order creation */return;}
+    goStep(target);
+  });
+  // Wire the address input + resolve button on step 1
+  const ta=$('#c-screen #addr-in');
+  if(ta) ta.addEventListener('input',()=>{S.c.text=ta.value;});
+  const goBtn=$('#c-screen #phone-go');
+  if(goBtn) goBtn.onclick=async ()=>{
+    if(!S.c.text.trim())return;
+    goBtn.disabled=true;
+    goBtn.innerHTML=ico('brain')+(LANG==='ar'?' جاري التحليل...':' Analysing...');
+    await runAnalyse();
+    goStep(2);
+  };
+  // Wire micro input on step 3
+  const mi=$('#c-screen #micro-in');
+  if(mi) mi.addEventListener('input',()=>{S.c.micro=mi.value;S.c.microTouched=true;});
+  // Mount Leaflet map on step 3
+  const realEl=document.getElementById('real-map');
+  if(realEl && S.c.backend && S.c.backend.lat && typeof L!=='undefined' && L.map){
+    const lat=S.c.backend.lat, lng=S.c.backend.lng;
+    setTimeout(()=>{
+      const map=L.map(realEl,{zoomControl:true,attributionControl:false}).setView([lat,lng],17);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+        maxZoom:19}).addTo(map);
+      const pin=L.marker([lat,lng],{draggable:true}).addTo(map);
+      pin.bindPopup('<b>'+(S.c.backend.parsed?.building||'المبنى')+'</b>').openPopup();
+      pin.on('dragend',e=>{S.c.footprint={lat:e.target.getLatLng().lat,lng:e.target.getLatLng().lng};});
+      if(S.c.backend.official&&S.c.backend.official.neighborhood){
+        L.popup({offset:[0,-35]}).setLatLng([lat,lng])
+          .setContent('<div style="font-family:Tajawal,sans-serif;direction:rtl;text-align:right">'+
+            '<b style="color:#6d28d9">'+S.c.backend.official.neighborhood+'</b></div>').addTo(map);
+      }
+      setTimeout(()=>map.invalidateSize(),150);
+    },50);
+  }
+}
+function renderCustSide(){
+  const c=S.c, side=$('#c-side'), tab=c.sideTab||'details';
+  if(!side)return;
+  if(tab==='sdk'){
+    side.innerHTML=
+      '<div class="card"><div class="card-hd">'+ico('code')+'<h3>'+(LANG==='ar'?'تكامل SDK':'SDK Integration')+'</h3></div>'+
+        '<div class="card-bd stack tight">'+
+          '<p class="dim" style="margin:0;font-size:14px;line-height:1.7">'+(LANG==='ar'
+            ?'هذه الشاشة ليست تطبيقاً مستقلاً — هي مكوّن يُلصق داخل أي تطبيق توصيل. سطران من الكود.'
+            :'This screen is not a standalone app — it is a component any delivery app can paste in. Two lines of code.')+'</p>'+
+          '<pre class="log" style="max-height:none;margin:0;font-size:13px">'+
+            '&lt;script src="sdk.wusool.ps/v1"&gt;\n&lt;/script&gt;\n\n'+
+            '&lt;wusool-address\n  api-key="wsl_live_..."\n  on-resolve="handler"\n/&gt;</pre>'+
+        '</div></div>';
+    return;
+  }
+  // Details tab
+  const step=c.step||1;
+  if(step===1){
+    side.innerHTML=
+      '<div class="card"><div class="card-hd">'+ico('zap')+'<h3>'+(LANG==='ar'?'سيناريوهات جاهزة':'Ready scenarios')+'</h3></div>'+
+        '<div class="card-bd" style="display:flex;flex-wrap:wrap;gap:8px">'+
+          SCEN.map(s=>'<button class="chip'+(s.id===c.sc?' active':'')+'" data-sc="'+s.id+'">'+s.label[LANG]+'</button>').join('')+
+        '</div></div>';
+    $$('[data-sc]').forEach(b=>b.onclick=()=>{
+      S.c.sc=b.dataset.sc; const s=SCEN.find(x=>x.id===b.dataset.sc);
+      if(s){S.c.text=s.text;S.c.presetId=s.id;}
+      renderCustomer();
+    });
+  } else if(step===2){
+    side.innerHTML='<div class="card" id="engine-card"></div>';
+    setTimeout(renderEngine,10);
+  } else {
+    side.innerHTML='';
+  }
 }
 function stepperHtml(step){
   let h='<nav class="stepper" aria-label="progress">';
@@ -2010,18 +2222,28 @@ function stepAddress(){
 }
 function wireAddress(){
   const ta=$('#addr-in');
-  ta.addEventListener('input',()=>{S.c.text=ta.value;
-    const s=curSc();
-    S.c.presetId=(ta.value===s.raw[LANG]||ta.value===s.voice[LANG])?s.id:null;});
-  ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){goStep(2);runAnalyse().then(renderEngine);}});
+  if(ta){
+    ta.addEventListener('input',()=>{S.c.text=ta.value;
+      const s=curSc();
+      S.c.presetId=(ta.value===s.raw[LANG]||ta.value===s.voice[LANG])?s.id:null;});
+    ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){goStep(2);runAnalyse().then(renderEngine);}});
+  }
   $$('[data-scen]').forEach(b=>b.onclick=()=>setScenario(b.dataset.scen));
-  $('#mic-btn').onclick=startVoice;
-  $('#go-analyse').onclick=async ()=>{
+  $$('[data-sc]').forEach(b=>b.onclick=()=>{
+    S.c.sc=b.dataset.sc; const s=SCEN.find(x=>x.id===b.dataset.sc);
+    if(s){S.c.text=s.text;S.c.presetId=s.id;}
+    renderCustomer();
+  });
+  const mic=$('#mic-btn'); if(mic) mic.onclick=startVoice;
+  const goBtn=$('#go-analyse')||$('#phone-go');
+  if(goBtn) goBtn.onclick=async ()=>{
     if(!S.c.text.trim())return;
-    goStep(2);            // show the step immediately, stream the trace into it
+    goBtn.disabled=true;
+    goBtn.innerHTML=ico('brain')+(LANG==='ar'?' جاري التحليل...':' Analysing...');
     await runAnalyse();
-    renderEngine();
+    goStep(2);
   };
+  $$('[data-go]').forEach(b=>b.onclick=()=>goStep(+b.dataset.go));
 }
 
 /* ---------- step 2 — what the engine understood ---------- */
@@ -2064,12 +2286,23 @@ function renderEngine(){
       :'<span style="color:#6ee7b7">"'+esc(v)+'"</span>';
     return '  <span style="color:#e9d5ff">"'+k+'"</span>: '+vs;
   }).join(',\n');
+  // Cadastral enrichment section
+  const off = c.backend && c.backend.official;
+  const cadExplain = (c.backend && c.backend.explain || []).find(x => x.startsWith('cadastral:'));
+  const cadHtml = off ? '<div style="background:linear-gradient(135deg,rgba(90,134,255,.08),rgba(109,40,217,.08));border-radius:14px;padding:14px 18px;margin-block:4px">'+
+    '<span class="eyebrow" style="color:#6d28d9">'+(LANG==='ar'?'العنوان الرسمي — بلدية رام الله':'Official address — Ramallah Municipality')+'</span>'+
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">'+
+    (off.neighborhood?'<span class="pill good" style="font-size:15px">'+ico('pin')+off.neighborhood+'</span>':'')+
+    (cadExplain?'<span style="font-size:14px;color:var(--text-2);line-height:1.5">'+esc(cadExplain.replace('cadastral: ',''))+'</span>':'')+
+    '</div></div>' : '';
+
   card.innerHTML=
     '<div class="card-hd">'+ico('brain')+'<h3>'+t('engineTitle')+'</h3>'+
       (c.analysed?'<span class="pill lg '+(c.conf>=80?'good':c.conf>=60?'warn':'bad')+'" style="margin-inline-start:auto">'+
         ico('gauge')+t('confidence')+' '+c.conf+'%</span>':'')+'</div>'+
     '<div class="card-bd stack">'+
       '<div><span class="eyebrow">'+t('entities')+'</span><div class="tagline">'+tagHtml+'</div></div>'+
+      cadHtml+
       '<div><span class="eyebrow">'+(LANG==='ar'?'سجلّ المحرّك':'Engine trace')+'</span>'+
         '<div class="log" id="eng-log">'+c.log.map(l=>'<div class="ln c-'+l[0]+'">'+esc(l[1])+'</div>').join('')+
         (c.logTimer?'<div class="ln"><span class="caret"></span></div>':'')+'</div></div>'+
@@ -2093,7 +2326,9 @@ function stepConfirm(){
        '<button data-mm="road" aria-pressed="'+(c.mapMode==='road')+'">'+ico('mapicon')+t('roadview')+'</button>'+
        '<button data-mm="sat" aria-pressed="'+(c.mapMode==='sat')+'">'+ico('sat')+t('satview')+'</button></div></div>'+
      '<div class="card-bd" style="padding:16px 22px 22px">'+
-      '<div class="mapbox" style="height:min(58vh,520px)"><canvas id="cust-map"></canvas>'+
+      '<div class="mapbox" style="height:min(58vh,520px)">'+
+       (c.backend&&c.backend.lat?'<div id="real-map" style="width:100%;height:100%;border-radius:var(--radius-xl)"></div>'
+        :'<canvas id="cust-map"></canvas>')+
        '<div class="map-ov" id="cust-ov"></div></div></div></div>'+
     '<div class="card"><div class="card-hd">'+ico('door')+'<h3>'+t('microTitle')+'</h3></div>'+
      '<div class="card-bd stack tight">'+
@@ -2110,9 +2345,49 @@ function stepConfirm(){
 function wireConfirm(){
   const c=S.c,rec=addrRecord(),sc=curSc();
   $$('[data-mm]').forEach(b=>b.onclick=()=>{S.c.mapMode=b.dataset.mm;renderCustomer();});
-  mountMap('#cust-map','cust',{mode:'city',seed:sc.seed,density:rec.density,
-    satellite:c.mapMode==='sat',cam:c.cam,minZ:.7,maxZ:9,overlay:custOverlay,onPick:custPick,
-    labels:mapLabels(sc)});
+
+  // Real Leaflet map when backend provided coordinates
+  const realEl=document.getElementById('real-map');
+  if(realEl && c.backend && c.backend.lat && typeof L!=='undefined' && L.map){
+    const lat=c.backend.lat, lng=c.backend.lng;
+    const map=L.map(realEl,{zoomControl:true,attributionControl:false}).setView([lat,lng],17);
+    // Esri World Imagery (satellite)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+      maxZoom:19}).addTo(map);
+    // Ramallah buildings overlay
+    const bldgUrl='https://utility.arcgis.com/usrsvcs/servers/e38bbc917fda450dbfa3f1cdda2bda44/rest/services/Basemap_emp/RamallahBuildingsOpen/MapServer/export';
+    L.tileLayer('',{maxZoom:19}).addTo(map);
+    // Dynamic overlay — building footprints from Ramallah GIS
+    map.on('moveend',function(){
+      const b=map.getBounds();
+      const overlay=document.getElementById('bldg-overlay');
+      if(overlay)overlay.remove();
+    });
+    // Resolution pin
+    const pin=L.marker([lat,lng],{draggable:true}).addTo(map);
+    pin.bindPopup(LANG==='ar'?'<b>'+esc(c.backend.parsed?.building||'المبنى')+'</b><br>اسحب لتعديل الموقع'
+      :'<b>'+esc(c.backend.parsed?.building||'Building')+'</b><br>Drag to adjust').openPopup();
+    // Cadastral info popup
+    if(c.backend.official && c.backend.official.neighborhood){
+      const off=c.backend.official;
+      const cadLine=(c.backend.explain||[]).find(x=>x.startsWith('cadastral:'));
+      L.popup({offset:[0,-35]}).setLatLng([lat,lng])
+        .setContent('<div style="font-family:Tajawal,sans-serif;direction:rtl;text-align:right;min-width:180px">'+
+          '<div style="font-weight:700;color:#6d28d9;margin-bottom:4px">'+off.neighborhood+'</div>'+
+          (cadLine?'<div style="font-size:12px;color:#555">'+esc(cadLine.replace('cadastral: ',''))+'</div>':'')+
+          '</div>').addTo(map);
+    }
+    pin.on('dragend',function(e){
+      const p=e.target.getLatLng();
+      S.c.footprint={lat:p.lat,lng:p.lng};
+      renderMapUI();
+    });
+    S.c._leaflet=map;
+  } else {
+    mountMap('#cust-map','cust',{mode:'city',seed:sc.seed,density:rec.density,
+      satellite:c.mapMode==='sat',cam:c.cam,minZ:.7,maxZ:9,overlay:custOverlay,onPick:custPick,
+      labels:mapLabels(sc)});
+  }
   renderMapUI();
   const mi=$('#micro-in');
   mi.addEventListener('input',()=>{S.c.micro=mi.value;S.c.microTouched=true;});
@@ -2248,7 +2523,8 @@ function wirePrice(){
   const rec=addrRecord();
   $$('[data-opt]').forEach(b=>b.onclick=()=>{S.c.option=b.dataset.opt;renderCustomer();});
   $$('[data-go]').forEach(b=>b.onclick=()=>goStep(+b.dataset.go));
-  $('#copy-link').onclick=()=>{
+  const cl=$('#copy-link'); if(!cl) return; // phone layout — buttons already wired
+  cl.onclick=()=>{
     const txt='wusool.ps/a/'+rec.code;
     if(navigator.clipboard)navigator.clipboard.writeText(txt).catch(()=>{});
     toast(t('copied'),'copy');
@@ -2499,7 +2775,7 @@ function renderScreen(remount){
   b.innerHTML=
    (d.offline?'<div class="banner warn">'+ico('wifiOff')+'<span>'+t('offlineOn')+'</span></div>':'')+
    (d.rerouted?'<div class="banner info">'+ico('route')+'<span>'+t('rerouted')+'</span></div>':'')+
-   '<div class="mapbox" style="height:172px;flex:0 0 172px"><canvas id="drv-map"></canvas></div>'+
+   '<div class="mapbox" style="height:172px;flex:0 0 172px"><div id="drv-map" style="width:100%;height:100%"></div></div>'+
    /* turn card */
    '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
      '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:var(--info-soft);'+
@@ -2535,8 +2811,36 @@ function renderScreen(remount){
    '</div>'+
    (d.sheet?cpSheet():'');
   if(!d.camInit){d.cam.zoom=0.70;d.cam.ox=-148;d.cam.oy=72;d.camInit=true;}
-  mountMap('#drv-map','drv',{mode:'city',seed:st.seed,density:st.density,satellite:!d.offline,
-    cam:d.cam,minZ:.5,maxZ:6,overlay:drvOverlay,labels:[]});
+  // Leaflet satellite map for driver (fallback to procedural canvas if unavailable)
+  (function(){
+    var el=document.getElementById('drv-map');
+    if(!el) return;
+    if(typeof L!=='undefined' && L.map && !d.offline){
+      // Clean up previous Leaflet instance
+      if(S.d._leaflet){try{S.d._leaflet.remove();}catch(e){} S.d._leaflet=null;}
+      var lat=st.lat||S.d.liveLat||31.903, lng=st.lng||S.d.liveLng||35.206;
+      var storeLat=31.906, storeLng=35.204;
+      var map=L.map(el,{zoomControl:false,attributionControl:false,dragging:true,scrollWheelZoom:true}).setView([(lat+storeLat)/2,(lng+storeLng)/2],14);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+        maxZoom:19}).addTo(map);
+      // Route line from store to destination
+      var routePts=[[storeLat,storeLng],[lat,lng]];
+      L.polyline(routePts,{color:'#5a86ff',weight:4,opacity:0.9,dashArray:'8 6'}).addTo(map);
+      // Store marker (small circle)
+      L.circleMarker([storeLat,storeLng],{radius:6,color:'#5a86ff',fillColor:'#fff',fillOpacity:1,weight:2}).addTo(map);
+      // Destination marker
+      L.marker([lat,lng]).addTo(map);
+      // Fit bounds to show both points
+      map.fitBounds(routePts,{padding:[20,20]});
+      S.d._leaflet=map;
+      setTimeout(function(){map.invalidateSize();},120);
+    } else {
+      // Offline or no Leaflet — fall back to procedural canvas
+      el.innerHTML='<canvas id="drv-map-canvas" style="width:100%;height:100%"></canvas>';
+      mountMap('#drv-map-canvas','drv',{mode:'city',seed:st.seed,density:st.density,satellite:!d.offline,
+        cam:d.cam,minZ:.5,maxZ:6,overlay:drvOverlay,labels:[]});
+    }
+  })();
   const nav=$('#d-nav');if(nav)nav.onclick=()=>{d.navStarted=true;d.t0=S.maps.drv?S.maps.drv.t:0;
     renderScreen();};
   const dn=$('#d-done');if(dn)dn.onclick=completeDelivery;
