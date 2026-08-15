@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;padding:0}iframe{width:1500px;height:1040px;border:0;display:block}
+</style></head><body>
+<iframe id="f" src="/"></iframe>
+<script>
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function until(fn,ms=9000){const t=Date.now();while(Date.now()-t<ms){try{if(fn())return 1}catch{}await wait(120)}return 0}
+(async()=>{
+  const f=document.getElementById('f');
+  await new Promise(r=>f.addEventListener('load',r,{once:true}));
+  await until(()=>f.contentWindow.WUSOOL);
+  const w=f.contentWindow.WUSOOL;
+  await until(()=>w.API.probed);
+  const scene=(location.hash||'#trace').slice(1);
+  if(scene==='trace'){
+    await w.setRole('customer');
+    w.S.c.text='رام الله، قرب مسجد جمال عبد الناصر، عمارة زيدان، الطابق الثالث، بجانب سوبر ماركت الأمل';
+    w.S.c.presetId=null; w.goStep(2); await w.runAnalyse(); await wait(2600);
+  } else if(scene==='accuracy'){
+    await w.setRole('dispatch'); w.S.x.tab='analytics'; w.renderDispatch();
+    await until(()=>w.S.x.accuracy,9000); await wait(1200);
+  } else if(scene==='road'){
+    await w.setRole('dispatch'); w.S.x.tab='learning'; w.renderDispatch();
+    await until(()=>w.$('#road-go'));
+    w.$('#road-go').click(); await until(()=>w.S.x.roadSim,9000); await wait(900);
+  }
+})();
+</script></body></html>

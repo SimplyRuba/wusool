@@ -1,0 +1,147 @@
+<!doctype html><html><head><meta charset="utf-8"><title>e2e</title></head><body>
+<pre id="out">running…</pre>
+<iframe id="f" src="/" style="width:1400px;height:900px;border:1px solid #ccc"></iframe>
+<script>
+const R = [];
+const T = (n, v, d='') => R.push((v ? 'PASS  ' : 'FAIL  ') + n + (d ? '   ' + d : ''));
+const dump = () => document.getElementById('out').textContent = R.join('\n');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+async function until(fn, ms = 8000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { try { if (fn()) return true; } catch {} await wait(120); }
+  return false;
+}
+
+(async () => {
+  const f = document.getElementById('f');
+  await new Promise(r => f.addEventListener('load', r, { once: true }));
+  await until(() => f.contentWindow.WUSOOL);
+  const w = f.contentWindow.WUSOOL;
+  w.$ = f.contentWindow.WUSOOL.$;
+
+  /* Each run gets its own customer. Reusing one number makes run 2 resolve at
+     tier 1 off the address run 1 pinned — correct behaviour, failed assertion. */
+  const RUN = String(Date.now()).slice(-7);
+  w.setDemoPhone('0599' + RUN);
+
+  T('app served from the API origin', !!w.S && !!w.API);
+  await until(() => w.API.probed);
+  T('backend probe succeeded — LIVE mode', w.API.live === true, 'engine: ' + w.API.engine);
+
+  /* ---- PATH A: a cold address, parsed by the real backend ----
+     The demo uses "عمارة زيدان", which seed.ts deliberately leaves out so it is
+     learned live on stage. That makes it cold exactly ONCE per seed: after the
+     first run it is positioned, and every later run correctly resolves at tier
+     2 — the product working, not a regression. So the harness finds a building
+     that is genuinely still unknown, and the cold -> pin -> neighbour path is
+     testable on every run. */
+  const FAMILIES = ['زيدان', 'بدران', 'الرجوب', 'دعيبس', 'زحايكة', 'عساف',
+                    'الددو', 'حجازي', 'بشناق', 'الترتير', 'صيام', 'خرّوب'];
+  let BUILDING = null;
+  for (const fam of FAMILIES) {
+    const probe = await w.apiPost('/resolve', { raw_text: `رام الله، عمارة ${fam}` });
+    if (probe.tier !== 2) { BUILDING = `عمارة ${fam}`; break; }
+  }
+  T('found a building the graph has never seen', !!BUILDING, BUILDING || 'all candidates already learned');
+
+  await w.setRole('customer');
+  w.S.c.text = `رام الله، قرب مسجد جمال عبد الناصر، ${BUILDING}، الطابق الثالث، بجانب سوبر ماركت الأمل`;
+  w.S.c.presetId = null;
+  await w.runAnalyse();
+  const b = w.S.c.backend;
+  T('resolve came from the server, not the simulation', !!b, b ? 'engine=' + b.engine : 'no backend payload');
+  T('tier 3 triangulation', b?.tier === 3, 'tier=' + b?.tier + ' conf=' + b?.confidence?.toFixed(2));
+  T('confidence surfaced to the UI', w.S.c.conf === Math.round(b.confidence * 100), 'ui=' + w.S.c.conf + '%');
+  T('entity tags built from the server parse',
+    w.S.c.parsed.segments.some(s => s.type === 'building' && BUILDING.includes(s.text.trim())));
+  T('engine trace shows the real explain[]', b.explain.length > 0, b.explain[b.explain.length - 1]);
+
+  /* ---- the pin: this is the write that teaches the graph ---- */
+  w.goStep(3);
+  await until(() => w.$('#fp-yes'));
+  w.$('#fp-yes').click();
+  await until(() => w.S.c.orderId, 8000);
+  T('order created on the server', !!w.S.c.orderId, 'order #' + w.S.c.orderId);
+  T('pin recorded and points staked', !!w.S.c.pinned,
+    w.S.c.pinned ? '+' + w.S.c.pinned.points + ' pending, address #' + w.S.c.pinned.address_id : '');
+
+  /* ---- PATH B: the money shot, through the real API ---- */
+  /* Different wording, different customer, same building — nobody pins twice. */
+  const r2 = await w.apiPost('/simulate/neighbor',
+    { text: `البيرة ${BUILDING} جنب سوبرماركت الامل ط٢`, phone: '0598' + RUN });
+  T('NEIGHBOUR: different wording + different phone -> tier 2',
+    r2.tier === 2, 'tier=' + r2.tier + ' conf=' + r2.confidence.toFixed(2) + ' ' + r2.status);
+  T('badge carries a prior-delivery count', (r2.learned_from ?? 0) >= 1, 'learned_from=' + r2.learned_from);
+  T('auto-resolved, no second pin asked', r2.status === 'resolved');
+
+  /* ---- PATH C: the road simulator moves a real checkpoint ---- */
+  await w.setRole('dispatch');
+  w.S.x.tab = 'learning';
+  w.renderDispatch();
+  await until(() => w.$('#road-go'));
+  T('road-post simulator rendered', !!w.$('#road-in'));
+  w.$('#road-in').value = 'الوضع عالكونتينر مسكر بالكامل والبديل واد النار أزمة خانقة';
+  w.$('#road-go').click();
+  await until(() => w.$('#road-out')?.textContent.includes('الكونتينر') ||
+                    w.$('#road-out')?.textContent.includes('checkpoint'), 9000);
+  T('checkpoint matched from dialect text',
+    /الكونتينر/.test(w.$('#road-out').textContent), w.$('#road-out').textContent.trim().slice(0, 70));
+  const cps = await w.apiGet('/checkpoints');
+  const container = cps.find(c => c.name_ar.includes('الكونتينر'));
+  T('server now reports it closed', container?.status === 'closed',
+    'staleness=' + container?.staleness_min + ' min');
+
+  /* ---- PATH D: the driver manifest is real work ---- */
+  await w.setRole('driver');
+  await until(() => w.STOPS.length > 0);
+  T('driver manifest loaded from /driver/tasks',
+    w.STOPS.some(s => s.liveOrderId), 'stops=' + w.STOPS.length +
+    ' first=#' + w.STOPS[0]?.liveOrderId);
+  T('manifest shows real confidence', typeof w.STOPS[0]?.trust === 'number',
+    w.STOPS[0]?.trust + '%');
+
+  /* ---- dashboard reads the real graph ---- */
+  const k = await w.apiGet('/dashboard/kpis');
+  T('KPIs computed from real rows', k.addresses_verified > 0,
+    'auto=' + (k.resolution_rate * 100).toFixed(1) + '% verified=' + k.addresses_verified +
+    ' learned=' + k.entities_learned);
+
+  /* ---- the OSM graph is really loaded, not the 28 hand-written ones ---- */
+  const health = await w.apiGet('/health');
+  T('full OSM landmark graph seeded', health.entities > 2000, health.entities + ' entities');
+
+  /* ---- measured accuracy is served and rendered ---- */
+  const acc = await w.apiGet('/dashboard/accuracy');
+  T('accuracy benchmark published', acc.rows?.length === 3, 'n=' + acc.sample_size);
+  T('one pin beats text-only, which beats a city geocode',
+    acc.rows[2].median_m < acc.rows[1].median_m && acc.rows[1].median_m < acc.rows[0].median_m,
+    acc.rows.map(r => r.median_m + 'm').join(' < '));
+
+  await w.setRole('dispatch');
+  w.S.x.tab = 'analytics';
+  await until(() => w.S.x.accuracy, 8000);
+  w.renderDispatch();
+  await until(() => /دقة تحديد الموقع|Location accuracy/.test(w.$('#x-body')?.textContent || ''));
+  T('accuracy panel rendered in the dashboard',
+    /دقة تحديد الموقع|Location accuracy/.test(w.$('#x-body').textContent));
+
+  /* ---- NEGATION: the failure that would send a driver away from a clear road ---- */
+  const clear = await w.apiPost('/ingest/road-post',
+    { text: 'شباب عطارة سالكة الحين مافي زحمة', source: 'telegram' });
+  const atara = clear.checkpoints.find(c => c.name_ar.includes('عطارة'));
+  T('"مافي زحمة" reads as CLEAR, not congested', atara?.status === 'open',
+    'عطارة -> ' + atara?.status);
+
+  /* ---- chain ambiguity is admitted rather than guessed ---- */
+  const bank = await w.apiPost('/resolve', { raw_text: 'رام الله، جنب بنك فلسطين، شقة 4' });
+  T('a name with many branches lowers confidence instead of guessing',
+    bank.explain.some(e => /matches \d+ places/.test(e)),
+    'conf=' + bank.confidence.toFixed(2) + ' ' + bank.status);
+
+  const failed = R.filter(r => r.startsWith('FAIL')).length;
+  R.push('');
+  R.push((R.length - 1 - failed) + ' passed, ' + failed + ' failed');
+  dump();
+})().catch(e => { R.push('THREW :: ' + e.message + '\n' + e.stack); dump(); });
+</script></body></html>

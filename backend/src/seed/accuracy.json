@@ -1,0 +1,45 @@
+{
+  "measured_at": "2026-08-15",
+  "sample_size": 27,
+  "excluded": {
+    "duplicate_name": 11,
+    "single_phrasing": 2
+  },
+  "pin_error_m": 12,
+  "rows": [
+    {
+      "label": "Mapping app (city centroid)",
+      "median_m": 1270,
+      "p90_m": 2805,
+      "within_100m": 0.037,
+      "within_250m": 0.074,
+      "within_500m": 0.185
+    },
+    {
+      "label": "Wusool - cold, text only",
+      "median_m": 87,
+      "p90_m": 1376,
+      "within_100m": 0.556,
+      "within_250m": 0.63,
+      "within_500m": 0.704
+    },
+    {
+      "label": "Wusool - after ONE pin",
+      "median_m": 9,
+      "p90_m": 12,
+      "within_100m": 1,
+      "within_250m": 1,
+      "within_500m": 1
+    }
+  ],
+  "tiers": {
+    "cold": {
+      "3": 18,
+      "4": 9
+    },
+    "warm": {
+      "2": 26,
+      "3": 1
+    }
+  }
+}

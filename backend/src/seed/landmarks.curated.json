@@ -1,0 +1,198 @@
+[
+  {
+    "name": "مسجد جمال عبد الناصر",
+    "name_en": "Jamal Abdel Nasser Mosque",
+    "kind": "landmark",
+    "lat": 31.90512,
+    "lng": 35.19942
+  },
+  {
+    "name": "المسجد الكبير",
+    "name_en": "Grand Mosque Ramallah",
+    "kind": "landmark",
+    "lat": 31.89845,
+    "lng": 35.20401
+  },
+  {
+    "name": "دوار المنارة",
+    "name_en": "Al-Manara Square",
+    "kind": "landmark",
+    "lat": 31.90332,
+    "lng": 35.20583
+  },
+  {
+    "name": "الدوار الثاني",
+    "name_en": "Second Circle",
+    "kind": "landmark",
+    "lat": 31.90381,
+    "lng": 35.20719
+  },
+  {
+    "name": "دوار الساعة",
+    "name_en": "Clock Circle",
+    "kind": "landmark",
+    "lat": 31.90366,
+    "lng": 35.20702
+  },
+  {
+    "name": "مستشفى رام الله الحكومي",
+    "name_en": "Ramallah Governmental Hospital",
+    "kind": "landmark",
+    "lat": 31.90097,
+    "lng": 35.19318
+  },
+  {
+    "name": "المستشفى الاستشاري العربي",
+    "name_en": "Arab Care Hospital",
+    "kind": "landmark",
+    "lat": 31.91123,
+    "lng": 35.19882
+  },
+  {
+    "name": "جامعة بيرزيت",
+    "name_en": "Birzeit University",
+    "kind": "landmark",
+    "lat": 31.96128,
+    "lng": 35.18426
+  },
+  {
+    "name": "مدرسة الفرندز",
+    "name_en": "Friends School",
+    "kind": "landmark",
+    "lat": 31.90045,
+    "lng": 35.20983
+  },
+  {
+    "name": "بلدية رام الله",
+    "name_en": "Ramallah Municipality",
+    "kind": "landmark",
+    "lat": 31.90211,
+    "lng": 35.20604
+  },
+  {
+    "name": "سينما القدس",
+    "name_en": "Al-Quds Cinema",
+    "kind": "landmark",
+    "lat": 31.9038,
+    "lng": 35.2034
+  },
+  {
+    "name": "مسرح وسينما القصبة",
+    "name_en": "Al-Kasaba Theatre",
+    "kind": "landmark",
+    "lat": 31.90463,
+    "lng": 35.20147
+  },
+  {
+    "name": "سوق رام الله المركزي",
+    "name_en": "Ramallah Central Market",
+    "kind": "landmark",
+    "lat": 31.89924,
+    "lng": 35.20455
+  },
+  {
+    "name": "كراج البيرة",
+    "name_en": "Al-Bireh Bus Station",
+    "kind": "landmark",
+    "lat": 31.90701,
+    "lng": 35.21387
+  },
+  {
+    "name": "مستشفى الشيخ زايد",
+    "name_en": "Sheikh Zayed Hospital",
+    "kind": "landmark",
+    "lat": 31.91594,
+    "lng": 35.20845
+  },
+  {
+    "name": "صيدلية الشفاء",
+    "name_en": "Al-Shifa Pharmacy",
+    "kind": "landmark",
+    "lat": 31.90126,
+    "lng": 35.20488
+  },
+  {
+    "name": "سوبرماركت الأمل",
+    "name_en": "Al-Amal Supermarket",
+    "kind": "landmark",
+    "lat": 31.89958,
+    "lng": 35.20425
+  },
+  {
+    "name": "سوبرماركت برافو",
+    "name_en": "Bravo Supermarket",
+    "kind": "landmark",
+    "lat": 31.90855,
+    "lng": 35.20132
+  },
+  {
+    "name": "مخبز الأقصى",
+    "name_en": "Al-Aqsa Bakery",
+    "kind": "landmark",
+    "lat": 31.89731,
+    "lng": 35.20612
+  },
+  {
+    "name": "البنك العربي فرع رام الله",
+    "name_en": "Arab Bank Ramallah",
+    "kind": "landmark",
+    "lat": 31.90287,
+    "lng": 35.20461
+  },
+  {
+    "name": "حديقة البلدية",
+    "name_en": "Municipal Park",
+    "kind": "landmark",
+    "lat": 31.90159,
+    "lng": 35.20729
+  },
+  {
+    "name": "مدرسة الأمير حسن",
+    "name_en": "Prince Hassan School",
+    "kind": "landmark",
+    "lat": 31.91032,
+    "lng": 35.21744
+  },
+  {
+    "name": "مسجد عمر بن الخطاب",
+    "name_en": "Omar Ibn Al-Khattab Mosque",
+    "kind": "landmark",
+    "lat": 31.90944,
+    "lng": 35.21205
+  },
+  {
+    "name": "مجمع فلسطين الطبي",
+    "name_en": "Palestine Medical Complex",
+    "kind": "landmark",
+    "lat": 31.90083,
+    "lng": 35.19366
+  },
+  {
+    "name": "عمارة النتشة",
+    "name_en": "Al-Natsheh Building",
+    "kind": "building",
+    "lat": 31.89975,
+    "lng": 35.20402
+  },
+  {
+    "name": "عمارة الزيتونة",
+    "name_en": "Al-Zeitouna Building",
+    "kind": "building",
+    "lat": 31.90621,
+    "lng": 35.20885
+  },
+  {
+    "name": "عمارة القدس",
+    "name_en": "Al-Quds Building",
+    "kind": "building",
+    "lat": 31.90241,
+    "lng": 35.21033
+  },
+  {
+    "name": "برج فلسطين التجاري",
+    "name_en": "Palestine Trade Tower",
+    "kind": "building",
+    "lat": 31.90477,
+    "lng": 35.20669
+  }
+]

@@ -1,0 +1,118 @@
+[
+  {
+    "name_ar": "حاجز قلنديا",
+    "name_en": "Qalandia Checkpoint",
+    "lat": 31.86233,
+    "lng": 35.22743,
+    "aliases": [
+      "قلنديا",
+      "Qalandia",
+      "Qalandiya",
+      "كلنديا"
+    ],
+    "source": "osm",
+    "source_note": "حاجز قلنديا node + border_control cluster"
+  },
+  {
+    "name_ar": "حاجز الكونتينر",
+    "name_en": "Container Checkpoint",
+    "lat": 31.74222,
+    "lng": 35.28928,
+    "aliases": [
+      "الكونتينر",
+      "كونتينر",
+      "كونتاينر",
+      "الكونتيبر",
+      "Container",
+      "وادي النار"
+    ],
+    "source": "osm",
+    "source_note": "حاجز وادي النار /الكونتينار"
+  },
+  {
+    "name_ar": "حاجز عطارة",
+    "name_en": "Atara Checkpoint",
+    "lat": 31.98284,
+    "lng": 35.20056,
+    "aliases": [
+      "عطارة",
+      "عين سينيا",
+      "Atara",
+      "Ein Siniya",
+      "عطاره"
+    ],
+    "source": "osm",
+    "source_note": "حاجز عطارة"
+  },
+  {
+    "name_ar": "حاجز بيت إيل (الارتباط)",
+    "name_en": "Beit El DCO Checkpoint",
+    "lat": 31.923,
+    "lng": 35.22,
+    "aliases": [
+      "بيت ايل",
+      "بيت إيل",
+      "الارتباط",
+      "DCO",
+      "Beit El"
+    ],
+    "source": "osm-agrees",
+    "source_note": "within 135 m of OSM"
+  },
+  {
+    "name_ar": "حاجز جبع",
+    "name_en": "Jaba Checkpoint",
+    "lat": 31.85392,
+    "lng": 35.2564,
+    "aliases": [
+      "جبع",
+      "Jaba",
+      "Jab'a"
+    ],
+    "source": "osm",
+    "source_note": "نقطة تفتيش الجبع الاسرائيلية"
+  },
+  {
+    "name_ar": "حاجز حوارة",
+    "name_en": "Huwara Checkpoint",
+    "lat": 32.1633,
+    "lng": 35.26316,
+    "aliases": [
+      "حوارة",
+      "حواره",
+      "Huwara",
+      "Hawara"
+    ],
+    "source": "osm",
+    "source_note": "حاجز حوارة"
+  },
+  {
+    "name_ar": "حاجز زعترة",
+    "name_en": "Zaatara Junction",
+    "lat": 32.112,
+    "lng": 35.276,
+    "aliases": [
+      "زعترة",
+      "زعتره",
+      "تبوح",
+      "Zaatara",
+      "Tapuah"
+    ],
+    "source": "unverified",
+    "source_note": "no OSM checkpoint feature found"
+  },
+  {
+    "name_ar": "حاجز الجلمة",
+    "name_en": "Jalama Checkpoint",
+    "lat": 32.50991,
+    "lng": 35.30585,
+    "aliases": [
+      "الجلمة",
+      "الجلمه",
+      "Jalama",
+      "Gilboa"
+    ],
+    "source": "osm",
+    "source_note": "حاجز الجلمة"
+  }
+]

@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# the database is generated — `npm run seed` rebuilds it in seconds, and
+# committing it would mean every pull fights over a binary file
+*.db
+*.db-wal
+*.db-shm
+
+# secrets. .env.example is committed; .env never is
+.env
+.env.local
+
+# Telegram login session — this is a credential, not config
+telegram/*.session
+telegram/*.session-journal
+telegram/__pycache__/
+
+# scratch
+.DS_Store
+*.log
