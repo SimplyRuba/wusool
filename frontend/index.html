@@ -2868,6 +2868,24 @@ function renderScreen(remount){
    (d.offline?'<div class="banner warn">'+ico('wifiOff')+'<span>'+t('offlineOn')+'</span></div>':'')+
    (d.rerouted?'<div class="banner info">'+ico('route')+'<span>'+t('rerouted')+'</span></div>':'')+
    '<div class="mapbox" style="height:172px;flex:0 0 172px"><div id="drv-map" style="width:100%;height:100%"></div></div>'+
+   /* checkpoint alert — live road intelligence */
+   '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid rgba(239,68,68,.2);background:linear-gradient(135deg,rgba(239,68,68,.04),rgba(239,68,68,.08))">'+
+     '<div class="card-bd" style="padding:10px 12px">'+
+       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+         '<span style="width:28px;height:28px;border-radius:8px;background:rgba(239,68,68,.12);color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:14px">'+ico('alert')+'</span>'+
+         '<b style="font-size:13px;color:#ef4444">'+(LANG==='ar'?'تنبيه — حاجز على المسار':'Alert — checkpoint on route')+'</b>'+
+       '</div>'+
+       '<div style="font-size:12px;line-height:1.6;color:var(--text-2)">'+
+         (LANG==='ar'
+           ?'<b style="color:#ef4444">حاجز الكونتينر</b> مغلق حسب بلاغات تلغرام. تم تحويل المسار تلقائياً لتجنّب الحاجز — الوقت الإضافي +4 دقائق.'
+           :'<b style="color:#ef4444">Container checkpoint</b> reported closed via Telegram. Route automatically rerouted — extra time +4 min.')+
+       '</div>'+
+       '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'+
+         '<span class="pill bad" style="font-size:11px">'+ico('alert')+(LANG==='ar'?'الكونتينر — مغلق':'Container — Closed')+'</span>'+
+         '<span class="pill neutral" style="font-size:11px">'+(LANG==='ar'?'مصدر: تلغرام · منذ 3 د':'Source: Telegram · 3 min ago')+'</span>'+
+       '</div>'+
+     '</div>'+
+   '</div>'+
    /* turn card */
    '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
      '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:var(--info-soft);'+
