@@ -2844,7 +2844,7 @@ function renderDriver(){
     '<div class="device"><div class="screen" id="d-screen"></div></div>'+
     '<div><div class="tabs" id="d-tabs">'+
       tabBtn('manifest',d.tab,'pkg',t('manifest'))+
-      tabBtn('telemetry',d.tab,'gauge',t('telemetry'))+
+      /* tabBtn('telemetry',d.tab,'gauge',t('telemetry'))+ */
      '</div><div id="d-side"></div></div>'+
    '</div>';
   $$('#d-tabs [data-tab]').forEach(b=>b.onclick=()=>{
