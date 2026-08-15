@@ -3023,19 +3023,8 @@ function renderTelemetry(){
        ico('alert')+'<span><b>'+esc(i[LANG])+'</b><br><span style="font-size:var(--fs-xs);opacity:.85">'+
        t('reportedBy',{n:i.reports})+' · '+t('affects',{n:i.routes})+' · '+(i.ago===0?(LANG==='ar'?'الآن':'now'):i.ago+' min')+'</span></span></div>').join('')+
     '</div></div>'+
-   '<div class="card" style="margin-block-start:20px"><div class="card-hd">'+ico('cam')+
-     '<h3>'+(LANG==='ar'?'قاعدة صور المداخل':'Doorway image bank')+'</h3></div>'+
-    '<div class="card-bd stack tight">'+
-     '<p class="dim" style="margin:0">'+
-      (LANG==='ar'?'الصور يلتقطها السائقون — لا العملاء. لا احتكاك عند الشراء، ولا خصوصية منتهكة، وقاعدة بيانات لا يملكها أحد غيرنا.'
-                 :'Photos are captured by couriers, never customers. Zero checkout friction, no privacy breach, and a database nobody else owns.')+'</p>'+
-     '<div class="photo"><canvas data-gate="brown" data-seed="9013"></canvas>'+
-      '<span class="cap"><span>'+(LANG==='ar'?'رام الله · التحتا':'Ramallah · Al-Tahta')+'</span><span>#9013</span></span></div>'+
-     '<div class="row"><span class="dim">'+(LANG==='ar'?'مداخل موثّقة':'Verified entrances')+'</span>'+
-      '<b class="sp tnum">'+(S.x.ghostCount+2140).toLocaleString('en')+'</b></div>'+
-    '</div></div>';
+   '';
   $$('[data-off]').forEach(b=>b.onclick=()=>{S.d.offline=b.dataset.off==='1';renderScreen();renderTelemetry();});
-  drawDoorPhotos();
 }
 function telRow(icon,k,v){
   return '<div class="row">'+ico(icon,'')+'<span class="dim">'+k+'</span><b class="sp mono" style="color:var(--text-1)">'+v+'</b></div>';
