@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-15T02:18:18.972Z",
+  "timestamp": "2026-08-15T03:29:41.411Z",
   "note": "Ground truth is independently perturbed from stored coordinates; zero-error results are impossible by construction.",
   "total_cases": 24,
   "real_cases": 20,

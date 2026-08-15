@@ -4,8 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f5f7fb">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet is vendored, not pulled from a CDN. A blocking <script src> to
+     unpkg means no map at all if the venue wifi is slow or blocked, and the
+     whole point of this build is that it runs with no internet. -->
+<link rel="stylesheet" href="/vendor/leaflet.css">
+<script src="/vendor/leaflet.js"></script>
 </head>
 <body>
 <title>Wusool AI</title>
@@ -2095,7 +2098,10 @@ function renderCustScreen(step){
       // Confirm button — prominent
       '<div style="display:flex;gap:8px">'+
         '<button class="btn ghost" data-go="2" style="flex:0 0 auto;padding-inline:14px">'+ico('arrowRight')+'</button>'+
-        '<button class="btn primary block" data-go="4" style="font-size:16px;padding:14px;border-radius:16px">'+
+        /* id, not data-go: confirming has to WRITE the pin, not just advance
+           the step. data-go would bind the generic navigation handler and the
+           graph would never learn. */
+        '<button class="btn primary block" id="fp-confirm" style="font-size:16px;padding:14px;border-radius:16px">'+
           ico('check')+(LANG==='ar'?' نعم، هذا مبناي':' Yes, this is my building')+'</button></div>';
 
   } else {
@@ -2195,7 +2201,7 @@ function renderCustSide(){
     side.innerHTML=
       '<div class="card"><div class="card-hd">'+ico('zap')+'<h3>'+(LANG==='ar'?'سيناريوهات جاهزة':'Ready scenarios')+'</h3></div>'+
         '<div class="card-bd" style="display:flex;flex-wrap:wrap;gap:8px">'+
-          SCEN.map(s=>'<button class="chip'+(s.id===c.sc?' active':'')+'" data-sc="'+s.id+'">'+s.label[LANG]+'</button>').join('')+
+          SCEN.map(s=>'<button class="chip'+(s.id===c.sc?' active':'')+'" data-sc="'+s.id+'">'+t(s.lab)+'</button>').join('')+
         '</div></div>';
     $$('[data-sc]').forEach(b=>b.onclick=()=>{
       S.c.sc=b.dataset.sc; const s=SCEN.find(x=>x.id===b.dataset.sc);
@@ -2420,7 +2426,11 @@ function wireConfirm(){
     }
     pin.on('dragend',function(e){
       const p=e.target.getLatLng();
-      S.c.footprint={lat:p.lat,lng:p.lng};
+      /* Keep the dragged coordinate separate from `footprint`, which is a
+         tri-state (null / false / true) that trustBadge and the price step
+         compare with ===true. Overwriting it with an object silently turned
+         "confirmed" into "not confirmed" everywhere downstream. */
+      S.c.pinLL={lat:p.lat,lng:p.lng};
       renderMapUI();
     });
     S.c._leaflet=map;
@@ -2437,7 +2447,57 @@ function wireConfirm(){
     S.c.micro=(S.c.micro?S.c.micro.replace(/\s*$/,'')+'، ':'')+v;
     $('#micro-in').value=S.c.micro;});
   $$('[data-go]').forEach(b=>b.onclick=()=>goStep(+b.dataset.go));
+
+  /* The phone's step-3 Confirm button. Bound after the generic [data-go] pass
+     so it wins: confirming has to write the pin, not just advance the step. */
+  const fc=$('#fp-confirm');
+  if(fc) fc.onclick=async ()=>{
+    fc.disabled=true;
+    await confirmFootprint();
+    toast(t('confirmedPin'),'checkCircle');
+    goStep(4);
+  };
 }
+/**
+ * Post the pin. This tap is what turns a guess into a permanent fact, so it is
+ * also the moment the backend graph learns — everything after it resolves at
+ * tier 2, which is the whole demo.
+ *
+ * WHY THIS IS A FUNCTION AND NOT AN INLINE HANDLER: it used to live inside
+ * `#fp-yes`'s onclick. When step 3 moved into the phone mockup, `#cust-ov`
+ * stopped rendering, `renderMapUI()` began early-returning, `#fp-yes` was never
+ * created, and the pin was silently never sent. The order was never created and
+ * the neighbour effect could not be demonstrated. Two callers now share it.
+ */
+async function confirmFootprint(){
+  S.c.footprint=true;
+  if(!API.live || S.c.orderId) return;
+
+  /* Prefer where the customer actually dragged the marker, then whatever the
+     server resolved, then the canvas candidate for the offline simulation. */
+  let lat=null,lng=null;
+  if(S.c.pinLL){ lat=S.c.pinLL.lat; lng=S.c.pinLL.lng; }
+  else if(S.c.backend && S.c.backend.lat!=null){ lat=S.c.backend.lat; lng=S.c.backend.lng; }
+  else if(S.maps.cust?.city?.cands){
+    const cand=S.maps.cust.city.cands[S.c.candIdx];
+    const sc=curSc(), k=Math.cos(sc.center[0]*Math.PI/180);
+    if(cand){ lat=sc.center[0]-cand.cy/110540; lng=sc.center[1]+cand.cx/(111320*k); }
+  }
+  if(lat==null) return;
+
+  try{
+    const order=await apiPost('/orders',{items:[{name:'حذاء رياضي',qty:1},{name:'حقيبة ظهر',qty:1}],
+      phone:DEMO_PHONE, raw_address:S.c.text});
+    S.c.orderId=order.id;
+    if(order.pin_token){
+      const pin=await apiPost('/pin/'+order.pin_token,{lat,lng});
+      S.c.pinned={lat,lng,points:pin.points_pending,address_id:pin.address_id};
+      toast(LANG==='ar'?('تم حفظ الموقع في الرسم البياني · +'+pin.points_pending+' نقطة قيد التأكيد')
+                       :('Saved to the address graph · +'+pin.points_pending+' points pending'),'checkCircle');
+    }
+  }catch(e){ console.warn('pin sync failed', e); }
+}
+
 function renderMapUI(){
   const c=S.c,ov=$('#cust-ov');if(!ov)return;
   const rec=addrRecord();
@@ -2470,26 +2530,8 @@ function renderMapUI(){
   $('#mz-re').onclick=()=>{m.cam.ox=0;m.cam.oy=0;m.cam.zoom=rec.density==='camp'?2.8:2.2;};
   const y=$('#fp-yes'),n=$('#fp-no'),r=$('#fp-reset');
   if(y)y.onclick=async ()=>{
-    S.c.footprint=true;renderMapUI();toast(t('confirmedPin'),'checkCircle');
-    /* This tap is what turns a guess into a permanent fact, so it is also the
-       moment the backend graph learns. Everything after it resolves at tier 2. */
-    if(API.live && !S.c.orderId){
-      try{
-        const cand=S.maps.cust.city.cands[S.c.candIdx];
-        const sc=curSc(), pr=projFrom(sc.center);
-        const k=Math.cos(sc.center[0]*Math.PI/180);
-        const lat=sc.center[0]-cand.cy/110540, lng=sc.center[1]+cand.cx/(111320*k);
-        const order=await apiPost('/orders',{items:[{name:'حذاء رياضي',qty:1},{name:'حقيبة ظهر',qty:1}],
-          phone:DEMO_PHONE, raw_address:S.c.text});
-        S.c.orderId=order.id;
-        if(order.pin_token){
-          const pin=await apiPost('/pin/'+order.pin_token,{lat,lng});
-          S.c.pinned={lat,lng,points:pin.points_pending,address_id:pin.address_id};
-          toast(LANG==='ar'?('تم حفظ الموقع في الرسم البياني · +'+pin.points_pending+' نقطة قيد التأكيد')
-                           :('Saved to the address graph · +'+pin.points_pending+' points pending'),'checkCircle');
-        }
-      }catch(e){ console.warn('pin sync failed', e); }
-    }
+    renderMapUI();toast(t('confirmedPin'),'checkCircle');
+    await confirmFootprint();
   };
   if(n)n.onclick=()=>{S.c.footprint=false;m.zoomBy(1/1.25);renderMapUI();};
   if(r)r.onclick=()=>{S.c.footprint=null;renderMapUI();};

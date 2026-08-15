@@ -58,10 +58,13 @@ async function until(fn, ms = 8000) {
   T('engine trace shows the real explain[]', b.explain.length > 0, b.explain[b.explain.length - 1]);
 
   /* ---- the pin: this is the write that teaches the graph ---- */
+  /* Step 3 lives in the phone mockup now; the confirm control is #fp-confirm.
+     #fp-yes is the older canvas-map path and only exists in simulation mode. */
   w.goStep(3);
-  await until(() => w.$('#fp-yes'));
-  w.$('#fp-yes').click();
-  await until(() => w.S.c.orderId, 8000);
+  const btn = await until(() => w.$('#fp-confirm') || w.$('#fp-yes'));
+  T('step 3 offers a way to confirm the building', !!btn);
+  (w.$('#fp-confirm') || w.$('#fp-yes')).click();
+  await until(() => w.S.c.orderId, 10000);
   T('order created on the server', !!w.S.c.orderId, 'order #' + w.S.c.orderId);
   T('pin recorded and points staked', !!w.S.c.pinned,
     w.S.c.pinned ? '+' + w.S.c.pinned.points + ' pending, address #' + w.S.c.pinned.address_id : '');

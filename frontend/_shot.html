@@ -16,6 +16,11 @@ async function until(fn,ms=9000){const t=Date.now();while(Date.now()-t<ms){try{i
     await w.setRole('customer');
     w.S.c.text='رام الله، قرب مسجد جمال عبد الناصر، عمارة زيدان، الطابق الثالث، بجانب سوبر ماركت الأمل';
     w.S.c.presetId=null; w.goStep(2); await w.runAnalyse(); await wait(2600);
+  } else if(scene==='map'){
+    await w.setRole('customer');
+    w.S.c.text='رام الله، قرب مسجد جمال عبد الناصر، عمارة زيدان، الطابق الثالث، بجانب سوبر ماركت الأمل';
+    w.S.c.presetId=null; await w.runAnalyse(); await wait(600);
+    w.goStep(3); await wait(3500);
   } else if(scene==='accuracy'){
     await w.setRole('dispatch'); w.S.x.tab='analytics'; w.renderDispatch();
     await until(()=>w.S.x.accuracy,9000); await wait(1200);
