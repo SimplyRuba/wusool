@@ -1988,109 +1988,152 @@ function renderCustScreen(step){
   const confPct=c.conf||0;
   const p=c.parsed||{segments:[],entities:{}};
 
+  // Extract info for all steps
+  const bk=c.backend||{};
+  const parsed=bk.parsed||{};
+  const building=parsed.building||(LANG==='ar'?'المبنى':'Building');
+  const city=parsed.city||(LANG==='ar'?'رام الله':'Ramallah');
+  const landmarks=(parsed.landmarks||[]).map(function(l){return typeof l==='string'?l:l.name;});
+  const offNeigh=bk.official?.neighborhood||'';
+  const tierNum=bk.tier||0;
+  const statusTxt=bk.status==='resolved'?(LANG==='ar'?'تم التحديد':'Located'):
+    bk.status==='estimated'?(LANG==='ar'?'موقع تقريبي':'Approximate'):
+    (LANG==='ar'?'نحتاج تأكيدك':'Confirm needed');
+  const fee=confPct>=80?14:confPct>=60?17:20;
+  const savedPct=confPct>=80?30:confPct>=60?15:0;
+
   if(step===1){
+    /* ── STEP 1: Address Input ── clean, branded, customer-friendly */
     b.innerHTML=
-      // Address input card
-      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
-        '<div class="flexrow" style="margin-bottom:8px">'+ico('pin')+'<b style="font-size:14px">'+(LANG==='ar'?'عنوان التوصيل':'Delivery address')+'</b></div>'+
-        '<textarea id="addr-in" class="field" rows="3" style="font-size:15px;line-height:1.7;resize:none;border-radius:12px" placeholder="'+
-          esc(LANG==='ar'?'رام الله، قرب المسجد، عمارة زيدان، ط٣':'Ramallah, near the mosque...')+'">'+esc(c.text)+'</textarea>'+
+      // Brand header
+      '<div style="text-align:center;padding:8px 0 4px">'+
+        '<div style="width:48px;height:48px;border-radius:14px;margin:0 auto 8px;background:linear-gradient(135deg,#5a86ff,#6d28d9);'+
+          'display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px">و</div>'+
+        '<h2 style="font-size:22px;font-weight:800;margin:0">'+(LANG==='ar'?'وين نوصّلك؟':'Where to?')+'</h2>'+
+        '<p style="font-size:13px;color:var(--text-2);margin:4px 0 0">'+(LANG==='ar'?'اكتب عنوانك بلهجتك — النظام بيفهم':'Type your address naturally — we understand')+'</p>'+
+      '</div>'+
+      // Address card
+      '<div class="card" style="border-radius:var(--radius-md);margin-top:4px"><div class="card-bd" style="padding:14px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+          '<span style="width:32px;height:32px;border-radius:9px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center">'+ico('pin')+'</span>'+
+          '<b style="font-size:15px">'+(LANG==='ar'?'عنوان التوصيل':'Delivery address')+'</b>'+
+        '</div>'+
+        '<textarea id="addr-in" class="field" rows="3" style="font-size:16px;line-height:1.7;resize:none;border-radius:12px;border:2px solid var(--border-strong)" placeholder="'+
+          esc(LANG==='ar'?'مثال: رام الله، قرب المسجد، عمارة زيدان، ط٣':'e.g. Ramallah, near the mosque, Zidan bldg')+'">'+esc(c.text)+'</textarea>'+
       '</div></div>'+
       // Resolve button
-      '<button class="btn primary block" id="phone-go">'+ico('brain')+(LANG==='ar'?' حلّل العنوان':' Resolve')+'</button>';
+      '<button class="btn primary block" id="phone-go" style="font-size:16px;padding:15px;border-radius:16px">'+
+        ico('brain')+(LANG==='ar'?' أرسل العنوان':' Send address')+'</button>'+
+      // Subtle powered-by
+      '<div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:8px">'+
+        (LANG==='ar'?'مدعوم بتقنية وصول AI · '+2753+' معلم محلي':'Powered by Wusool AI · '+2753+' local landmarks')+'</div>';
 
   } else if(step===2){
-    const tagHtml=(p.segments||[]).map(s=>{
-      const lab={city:'eCity',landmark:'eLandmark',prep:'ePrep',building:'eBuilding',micro:'eMicro',plain:'eOther'}[s.type]||'eOther';
-      return '<span class="tok '+s.type+'" style="font-size:13px"><span class="lbl" style="font-size:9px">'+t(lab)+'</span>'+esc(s.text)+'</span>';
-    }).join('');
-
+    /* ── STEP 2: "We understood your address" ── customer-friendly, not engineer-facing */
     b.innerHTML=
-      // Confidence + engine badge
-      (c.analysed?'<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
-        '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;display:flex;align-items:center;justify-content:center;'+
-          'background:'+(confPct>=80?'var(--success-soft)':confPct>=60?'var(--warning-soft)':'var(--danger-soft)')+';'+
-          'color:'+(confPct>=80?'var(--success-ink)':confPct>=60?'var(--warning-ink)':'var(--danger-ink)')+'">'+ico('gauge')+'</span>'+
-        '<span style="flex:1"><b class="mono" style="font-size:19px">'+confPct+'%</b>'+
-          '<div class="dim" style="font-size:12px">'+(LANG==='ar'?'مستوى الثقة':'Confidence level')+'</div></span>'+
-        '<span class="pill '+(c.backend?.engine==='rules'?'neutral':'info')+'" style="font-size:11px">'+
-          (c.backend?.engine||'rules')+'</span>'+
-      '</div></div>':'')+
-      // Stats row
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
-        miniStat('pin',LANG==='ar'?'الطبقة':'Tier','T'+(c.backend?.tier||'?'))+
-        miniStat('brain',LANG==='ar'?'الحالة':'Status',
-          c.backend?.status==='resolved'?(LANG==='ar'?'محلول':'Resolved'):
-          c.backend?.status==='estimated'?(LANG==='ar'?'تقريبي':'Estimated'):
-          (LANG==='ar'?'يحتاج تثبيت':'Needs pin'))+
-        miniStat('zap',LANG==='ar'?'كيانات':'Entities',String((c.backend?.matched_entities||[]).length))+
+      // Header with status
+      '<div style="text-align:center;padding:4px 0">'+
+        '<div style="width:52px;height:52px;border-radius:50%;margin:0 auto 6px;'+
+          'background:'+(confPct>=75?'var(--success-soft)':confPct>=50?'var(--warning-soft)':'var(--danger-soft)')+';'+
+          'color:'+(confPct>=75?'var(--success-ink)':confPct>=50?'var(--warning-ink)':'var(--danger-ink)')+';'+
+          'display:flex;align-items:center;justify-content:center;font-size:22px">'+(confPct>=75?'✓':'?')+'</div>'+
+        '<h2 style="font-size:20px;font-weight:800;margin:0">'+statusTxt+'</h2>'+
+        '<p style="font-size:13px;color:var(--text-2);margin:3px 0 0">'+(LANG==='ar'?'هذا اللي فهمناه من عنوانك':'Here is what we understood')+'</p>'+
       '</div>'+
-      // Entity tags
-      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
-        '<span class="eyebrow" style="margin-bottom:6px">'+(LANG==='ar'?'الكيانات المستخرجة':'Extracted entities')+'</span>'+
-        '<div class="tagline" style="gap:6px;flex-wrap:wrap">'+tagHtml+'</div>'+
+      // Building card — the main result
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:14px;display:flex;align-items:center;gap:12px">'+
+        '<span style="width:44px;height:44px;flex:0 0 44px;border-radius:12px;background:linear-gradient(135deg,#5a86ff,#6d28d9);'+
+          'color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px">🏠</span>'+
+        '<span style="flex:1"><b style="font-size:17px">'+esc(building)+'</b>'+
+          '<div style="font-size:12px;color:var(--text-2);margin-top:2px">'+esc(city)+
+            (landmarks.length?' · '+(LANG==='ar'?'قرب ':'near ')+esc(landmarks[0]):'')+
+            (parsed.floor?' · '+(LANG==='ar'?'طابق ':'floor ')+esc(parsed.floor):'')+
+          '</div></span>'+
       '</div></div>'+
-      // Official address card (cadastral)
-      (c.backend?.official?.neighborhood?
-        '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid rgba(109,40,217,.15)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
-          '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:linear-gradient(135deg,rgba(90,134,255,.12),rgba(109,40,217,.12));'+
-            'color:#6d28d9;display:flex;align-items:center;justify-content:center;font-size:18px">🏛</span>'+
-          '<span style="flex:1"><b style="font-size:15px;color:#6d28d9">'+esc(c.backend.official.neighborhood)+'</b>'+
-            '<div class="dim" style="font-size:11px">'+(LANG==='ar'?'العنوان الرسمي — بلدية رام الله':'Official — Ramallah Municipality')+'</div></span>'+
+      // Stats row — customer-friendly labels
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
+        miniStat('shield',LANG==='ar'?'الدقة':'Accuracy',confPct+'%')+
+        miniStat('pin',LANG==='ar'?'معالم':'Landmarks',String(landmarks.length))+
+        miniStat('brain',LANG==='ar'?'المحرّك':'Engine',bk.engine==='llm-cache'?'AI':(bk.engine||'—'))+
+      '</div>'+
+      // Official address (cadastral) — if available
+      (offNeigh?
+        '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid rgba(109,40,217,.15)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:10px">'+
+          '<span style="width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:linear-gradient(135deg,rgba(90,134,255,.12),rgba(109,40,217,.12));'+
+            'color:#6d28d9;display:flex;align-items:center;justify-content:center;font-size:16px">🏛</span>'+
+          '<span style="flex:1"><b style="font-size:14px;color:#6d28d9">'+esc(offNeigh)+'</b>'+
+            '<div style="font-size:11px;color:var(--text-3)">'+(LANG==='ar'?'العنوان الرسمي — بلدية رام الله':'Official — Ramallah Municipality')+'</div></span>'+
         '</div></div>':'')+
-      // Navigation buttons
-      '<div style="display:flex;gap:8px;margin-top:auto;padding-top:4px">'+
-        '<button class="btn ghost" data-go="1" style="flex:1">'+ico('arrowRight')+(LANG==='ar'?' رجوع':' Back')+'</button>'+
-        '<button class="btn primary" data-go="3" style="flex:2">'+ico('sat')+(LANG==='ar'?' للخريطة':' Map')+'</button></div>';
+      // Buttons
+      '<div style="display:flex;gap:8px;margin-top:auto;padding-top:6px">'+
+        '<button class="btn ghost" data-go="1" style="flex:1">'+ico('arrowRight')+(LANG==='ar'?' تعديل':' Edit')+'</button>'+
+        '<button class="btn primary" data-go="3" style="flex:2">'+ico('sat')+(LANG==='ar'?' تأكيد على الخريطة':' Confirm on map')+'</button></div>';
 
   } else if(step===3){
+    /* ── STEP 3: Map Confirmation ── big map, one clear CTA */
     b.innerHTML=
-      // Map
-      '<div class="mapbox" style="height:280px;flex:0 0 280px">'+
-        (c.backend&&c.backend.lat?'<div id="real-map" style="width:100%;height:100%"></div>'
+      // Map — large
+      '<div class="mapbox" style="height:300px;flex:0 0 300px;border-radius:16px;overflow:hidden">'+
+        (bk.lat?'<div id="real-map" style="width:100%;height:100%"></div>'
           :'<canvas id="cust-map" style="width:100%;height:100%"></canvas>')+
       '</div>'+
-      // Address summary card
-      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;display:flex;flex-direction:column;gap:8px">'+
-        '<div class="flexrow">'+
-          '<span class="pill '+(confPct>=80?'good':confPct>=60?'warn':'bad')+'">'+ico('shield')+(LANG==='ar'?'ثقة ':'conf ')+confPct+'%</span>'+
-          (c.backend?.official?.neighborhood?'<span class="pill info">🏛 '+esc(c.backend.official.neighborhood)+'</span>':'')+
-        '</div>'+
-        '<div style="font-size:13px;line-height:1.5">'+esc(c.text.slice(0,80))+'</div>'+
-      '</div></div>'+
-      // Micro-location input
+      // Address summary — compact
       '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
-        '<span class="eyebrow" style="margin-bottom:6px">'+ico('door')+' '+(LANG==='ar'?'تفاصيل الوصول':'Door details')+'</span>'+
-        '<input id="micro-in" class="field" style="font-size:14px;border-radius:10px" placeholder="'+esc(t('microPh'))+'" value="'+esc(c.micro)+'">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+          '<span style="font-size:16px">🏠</span>'+
+          '<b style="font-size:15px">'+esc(building)+'</b>'+
+          '<span class="pill '+(confPct>=75?'good':confPct>=50?'warn':'bad')+'" style="margin-inline-start:auto;font-size:11px">'+confPct+'%</span>'+
+        '</div>'+
+        '<div style="font-size:12px;color:var(--text-2)">'+esc(city)+(landmarks.length?' · '+esc(landmarks[0]):'')+'</div>'+
+        (offNeigh?'<div style="font-size:11px;color:#6d28d9;margin-top:4px">🏛 '+esc(offNeigh)+'</div>':'')+
       '</div></div>'+
-      // Buttons
+      // Micro-location
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:10px 12px">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+ico('door')+
+          '<span style="font-size:12px;font-weight:600;color:var(--text-2)">'+(LANG==='ar'?'كيف يوصل السائق لبابك؟':'How does the driver find your door?')+'</span></div>'+
+        '<input id="micro-in" class="field" style="font-size:14px;border-radius:10px" placeholder="'+
+          esc(LANG==='ar'?'مثال: المدخل الجانبي، طابق ٣، باب أزرق':'e.g. Side entrance, 3rd floor, blue door')+'" value="'+esc(c.micro)+'">'+
+      '</div></div>'+
+      // Confirm button — prominent
       '<div style="display:flex;gap:8px">'+
-        '<button class="btn ghost" data-go="2" style="flex:1">'+ico('arrowRight')+(LANG==='ar'?' رجوع':' Back')+'</button>'+
-        '<button class="btn primary" data-go="4" style="flex:2">'+ico('check')+(LANG==='ar'?' تأكيد المبنى':' Confirm')+'</button></div>';
+        '<button class="btn ghost" data-go="2" style="flex:0 0 auto;padding-inline:14px">'+ico('arrowRight')+'</button>'+
+        '<button class="btn primary block" data-go="4" style="font-size:16px;padding:14px;border-radius:16px">'+
+          ico('check')+(LANG==='ar'?' نعم، هذا مبناي':' Yes, this is my building')+'</button></div>';
 
   } else {
+    /* ── STEP 4: Price & Order ── shows the value of trust */
+    var baseFee=20, disc=baseFee-fee;
     b.innerHTML=
-      // Price summary
-      '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid var(--brand-faint)"><div class="card-bd" style="padding:12px;display:flex;align-items:center;gap:12px">'+
-        '<span style="width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:var(--brand-soft);'+
-          'color:var(--brand);display:flex;align-items:center;justify-content:center">'+ico('coins')+'</span>'+
-        '<span style="flex:1"><b class="mono" style="font-size:22px">₪'+(confPct>=80?'14':confPct>=60?'17':'20')+'</b>'+
-          '<div class="dim" style="font-size:12px">'+(LANG==='ar'?'أجرة التوصيل':'Delivery fee')+'</div></span>'+
-      '</div></div>'+
-      // Trust factors
-      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'+
-        miniStat('shield',LANG==='ar'?'الثقة':'Trust',confPct+'%')+
-        miniStat('pin',LANG==='ar'?'الطبقة':'Tier','T'+(c.backend?.tier||'?'))+
+      // Price hero
+      '<div style="text-align:center;padding:12px 0 4px">'+
+        '<div style="font-size:11px;color:var(--text-3);text-decoration:line-through;margin-bottom:2px">'+(disc>0?'₪'+baseFee:'')+'</div>'+
+        '<div style="font-size:42px;font-weight:800;color:var(--brand);letter-spacing:-2px">₪'+fee+'</div>'+
+        '<div style="font-size:14px;color:var(--text-2);margin-top:2px">'+(LANG==='ar'?'أجرة التوصيل':'Delivery fee')+'</div>'+
+        (disc>0?'<div style="margin-top:6px"><span class="pill good" style="font-size:13px">'+ico('check')+
+          (LANG==='ar'?'وفّرت ₪'+disc+' بفضل ثقة العنوان':'Saved ₪'+disc+' from address trust')+'</span></div>':'')+
       '</div>'+
-      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px;font-size:13px;line-height:1.6;color:var(--text-2)">'+
-        (LANG==='ar'
-          ?'كل ما زادت ثقة العنوان، نزلت أجرة الشحن. تأكيد المبنى مرة واحدة بيخفّض السعر لكل الجيران.'
-          :'Higher address trust means lower delivery fees. Confirming a building once lowers the price for every neighbor.')+
+      // Breakdown
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
+        '<span class="eyebrow" style="margin-bottom:8px">'+(LANG==='ar'?'تفاصيل السعر':'Price breakdown')+'</span>'+
+        '<div class="row"><span class="dim">'+(LANG==='ar'?'السعر الأساسي':'Base price')+'</span><b class="sp tnum">₪'+baseFee+'</b></div>'+
+        (disc>0?'<div class="row"><span style="color:var(--success-ink)">'+(LANG==='ar'?'خصم ثقة العنوان':'Address trust discount')+'</span><b class="sp tnum" style="color:var(--success-ink)">−₪'+disc+'</b></div>':'')+
+        '<div style="border-top:1px solid var(--border-strong);margin-top:8px;padding-top:8px" class="row"><b>'+(LANG==='ar'?'المجموع':'Total')+'</b><b class="sp tnum" style="font-size:18px;color:var(--brand)">₪'+fee+'</b></div>'+
       '</div></div>'+
-      // Buttons
-      '<div style="display:flex;gap:8px;margin-top:auto;padding-top:4px">'+
-        '<button class="btn ghost" data-go="3" style="flex:1">'+ico('arrowRight')+(LANG==='ar'?' رجوع':' Back')+'</button>'+
-        '<button class="btn good block" data-go="0" style="flex:2">'+ico('checkCircle')+(LANG==='ar'?' اطلب الآن':' Order now')+'</button></div>';
+      // Trust summary
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
+        miniStat('shield',LANG==='ar'?'الدقة':'Accuracy',confPct+'%')+
+        miniStat('pin',LANG==='ar'?'المبنى':'Building',esc(building.split(' ').pop()))+
+        miniStat('brain',LANG==='ar'?'المحرّك':'Engine',bk.engine==='llm-cache'?'AI':(bk.engine||'—'))+
+      '</div>'+
+      // Explanation
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:10px 12px;font-size:12px;line-height:1.6;color:var(--text-2)">'+
+        (LANG==='ar'
+          ?'🏘 تأكيدك للمبنى بيخفّض السعر مش بس إلك — كل جار بنفس العمارة بيستفيد. عنوان واحد موثّق = توصيل أرخص للجميع.'
+          :'🏘 Confirming your building lowers the price not just for you — every neighbor in the same building benefits. One verified address = cheaper delivery for all.')+
+      '</div></div>'+
+      // Order button
+      '<button class="btn good block" data-go="0" style="font-size:16px;padding:15px;border-radius:16px">'+
+        ico('checkCircle')+(LANG==='ar'?' اطلب الآن':' Place order')+'</button>';
   }
   // Wire all buttons inside the phone screen
   $$('#c-screen [data-go]').forEach(b=>b.onclick=()=>{
