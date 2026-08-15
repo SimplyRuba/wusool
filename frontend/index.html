@@ -2797,13 +2797,13 @@ function renderScreen(remount){
        '<span class="pill neutral">'+ico('pin')+t('stopOf',{a:d.stop+1,b:STOPS.length})+'</span></div>'+
      '<div style="font-size:13.5px;line-height:1.5">'+esc(st.addr[LANG])+'</div>'+
    '</div></div>'+
-   /* doorway */
-   doorwayCard(st)+
+   /* doorway — commented out, not in scope for this build */
+   /* doorwayCard(st)+ */
    /* actions */
    '<div style="display:flex;gap:8px;margin-block-start:2px">'+
      (!d.navStarted
        ?'<button class="btn primary block" id="d-nav">'+ico('nav')+t('navigate')+'</button>'
-       :'<button class="btn good block" id="d-done"'+((st.photo||d.captured)?'':' disabled')+'>'+ico('checkCircle')+t('complete')+'</button>')+
+       :'<button class="btn good block" id="d-done">'+ico('checkCircle')+t('complete')+'</button>')+
    '</div>'+
    '<div style="display:flex;gap:8px">'+
      '<button class="btn danger" style="flex:1" id="d-cp">'+ico('alert')+t('reportCp')+'</button>'+
@@ -2848,8 +2848,9 @@ function renderScreen(remount){
   $('#d-off').onclick=()=>{d.offline=!d.offline;renderScreen();renderTelemetry();
     toast(d.offline?t('offlineOn'):(LANG==='ar'?'عادت التغطية':'Coverage restored'),d.offline?'wifiOff':'wifi');};
   $$('[data-cp]').forEach(b=>b.onclick=()=>reportCheckpoint(b.dataset.cp));
+  /* doorway photos commented out — not in scope
   const cap=$('#d-capture');if(cap)cap.onclick=captureDoor;
-  drawDoorPhotos();
+  drawDoorPhotos(); */
 }
 function miniStat(icon,label,val){
   return '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:9px 10px">'+
