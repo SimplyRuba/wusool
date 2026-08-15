@@ -793,8 +793,8 @@ const TXT = {
   kGhost:{ar:'معالم ثقافية متعلَّمة',en:'Cultural landmarks learned'},
   vsBaseline:{ar:'مقابل خط الأساس',en:'vs baseline'},
   fleetMap:{ar:'خريطة الأسطول الحيّة',en:'Live fleet map'},
-  ghostFeed:{ar:'تعلّم المعالم الشبحية',en:'Ghost-landmark learning'},
-  ghostSub:{ar:'قاعدة بيانات تشفي نفسها من كل تسليم ناجح',en:'A database that heals itself on every successful drop'},
+  ghostFeed:{ar:'المعالم المتعلّمة',en:'Learned landmarks'},
+  ghostSub:{ar:'معالم اكتشفها النظام من عمليات التوصيل الناجحة',en:'Landmarks the system discovered from successful deliveries'},
   incidents:{ar:'الإغلاقات النشطة',en:'Active closures'},
   reportedBy:{ar:'{n} بلاغات',en:'{n} reports'},
   affects:{ar:'يؤثر على {n} مسارات',en:'affects {n} routes'},
@@ -3170,7 +3170,7 @@ function pushFeed(item){
 }
 function seedFeed(){
   S.x.feed=[
-   {kind:'ghost',ar:'تعلّم معلماً ثقافياً جديداً: «سينما القدس القديمة» ⇒ 31.90380, 35.20340',
+   {kind:'ghost',ar:'اكتشف معلماً جديداً: «سينما القدس القديمة» ⇒ 31.90380, 35.20340',
     en:'Learned cultural landmark: “the old Al-Quds cinema” ⇒ 31.90380, 35.20340',
     meta:['3 '+(LANG==='ar'?'تسليمات':'drop-offs'),'conf 0.91',LANG==='ar'?'غير موجود على خرائط جوجل':'not on Google Maps']},
    {kind:'photo',ar:'صورة مدخل جديدة: الخليل · وادي الهرية · عمارة الجعبري',
@@ -3246,7 +3246,7 @@ function renderDispatch(){
   const x=S.x, CH=chart();
   if(!x.tab)x.tab='overview';
   const TABS=[['overview','radar',LANG==='ar'?'نظرة عامة':'Overview'],
-              ['learning','ghost',LANG==='ar'?'التعلّم':'Learning'],
+              ['learning','ghost',LANG==='ar'?'المعالم المتعلّمة':'Learned'],
               ['analytics','trendDown',LANG==='ar'?'الأثر':'Impact']];
   $('#panel-dispatch').innerHTML='<div class="stage wide">'+
     '<div class="tabs" id="x-tabs">'+TABS.map(a=>tabBtn(a[0],x.tab,a[1],a[2])).join('')+'</div>'+
