@@ -1,0 +1,15 @@
+{
+  "is_road_related": true,
+  "mentions": [
+    {
+      "name": "الكونتينر",
+      "type": "checkpoint",
+      "status": "closed"
+    },
+    {
+      "name": "واد النار",
+      "type": "road",
+      "status": "congested"
+    }
+  ]
+}

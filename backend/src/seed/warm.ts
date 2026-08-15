@@ -16,8 +16,9 @@ const POSTS = [
   'في حاجز طيار على مدخل المخيم انتبهوا',
 ];
 
-const key = !!process.env.ANTHROPIC_API_KEY;
-console.log(key ? 'warming LLM cache...' : 'no ANTHROPIC_API_KEY - nothing to warm (rule engine already works offline)');
+const key = !!process.env.GEMINI_API_KEY || !!process.env.ANTHROPIC_API_KEY;
+const prov = process.env.GEMINI_API_KEY ? 'Gemini' : process.env.ANTHROPIC_API_KEY ? 'Anthropic' : 'none';
+console.log(key ? `warming LLM cache via ${prov}...` : 'no API key - nothing to warm (rule engine already works offline)');
 
 for (const a of ADDRESSES) {
   const r = await extractAddress(a);

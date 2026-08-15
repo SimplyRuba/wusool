@@ -32,7 +32,7 @@ const getAnthropic = () => (anthropicClient ??= new Anthropic());
 
 /* ── Gemini client ────────────────────────────────────────────────── */
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash';
 let geminiClient: GoogleGenAI | null = null;
 const getGemini = () => (geminiClient ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! }));
 
@@ -46,16 +46,18 @@ export type LLMResult<T> = { data: T; engine: 'llm' | 'llm-cache' };
 /* ── Gemini call ──────────────────────────────────────────────────── */
 
 async function callGemini<T>(
-  system: string, user: string, schema: Record<string, unknown>,
+  system: string, user: string, _schema: Record<string, unknown>,
 ): Promise<T> {
   const ai = getGemini();
+  // Use responseMimeType for JSON guarantee but skip responseSchema —
+  // Gemini's schema enforcement garbles Arabic text in field values.
+  // The system prompt already specifies the exact shape.
   const res = await ai.models.generateContent({
     model: GEMINI_MODEL,
     contents: user,
     config: {
-      systemInstruction: system,
+      systemInstruction: system + '\nReturn ONLY valid JSON matching the schema described above. Preserve all Arabic text exactly as written.',
       responseMimeType: 'application/json',
-      responseSchema: schema as any,
     },
   });
   const text = res.text;

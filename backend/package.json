@@ -7,11 +7,11 @@
     "node": ">=22.5"
   },
   "scripts": {
-    "dev": "node --watch src/index.ts",
-    "start": "node src/index.ts",
-    "seed": "node src/seed/seed.ts",
-    "warm": "node src/seed/warm.ts",
-    "smoke": "node src/seed/smoke.ts",
+    "dev": "node --env-file=.env --watch src/index.ts",
+    "start": "node --env-file=.env src/index.ts",
+    "seed": "node --env-file=.env src/seed/seed.ts",
+    "warm": "node --env-file=.env src/seed/warm.ts",
+    "smoke": "node --env-file=.env src/seed/smoke.ts",
     "osm": "node src/seed/fetch-osm.ts",
     "bench": "node src/seed/bench.ts",
     "checkpoints": "node src/seed/verify-checkpoints.ts",

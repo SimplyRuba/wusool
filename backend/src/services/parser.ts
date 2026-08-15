@@ -17,19 +17,47 @@ export type ParseOut = {
  * there is no code path where a missing key or a dropped connection stops the
  * pipeline. That is the point: weak connectivity is the normal case here.
  */
+/** Normalize LLM output — Gemini sometimes returns landmarks as plain strings
+ *  instead of {name, type} objects, or omits fields the schema requires. */
+function normalizeParsed(data: any): ParsedAddress {
+  const landmarks = (data.landmarks ?? []).map((lm: any) => {
+    if (typeof lm === 'string') return { name: lm, type: 'other' as const };
+    if (lm && typeof lm === 'object' && lm.name) return { name: lm.name, type: lm.type ?? 'other' };
+    return null;
+  }).filter(Boolean);
+
+  const relations = (data.relations ?? []).map((r: any) => {
+    if (r && typeof r === 'object' && r.object)
+      return { subject: r.subject ?? 'target', relation: r.relation ?? 'near', object: r.object };
+    return null;
+  }).filter(Boolean);
+
+  return {
+    city: data.city ?? null,
+    area: data.area ?? null,
+    landmarks,
+    building: data.building ?? null,
+    floor: data.floor != null ? String(data.floor) : null,
+    apartment: data.apartment ?? null,
+    relations,
+    notes: data.notes ?? null,
+  };
+}
+
 export async function extractAddress(rawText: string): Promise<ParseOut> {
   try {
-    const { data, engine } = await callStructured<ParsedAddress>(
+    const { data, engine } = await callStructured<any>(
       ADDRESS_SYSTEM, rawText, ADDRESS_SCHEMA, 1024);
+    const parsed = normalizeParsed(data);
     // The rule engine is more reliable on floors and doors, so backfill any gaps.
     const rules = parseWithRules(rawText);
     return {
       engine,
       parsed: {
-        ...data,
-        floor: data.floor ?? rules.floor,
-        apartment: data.apartment ?? rules.apartment,
-        area: data.area ?? rules.area,
+        ...parsed,
+        floor: parsed.floor ?? rules.floor,
+        apartment: parsed.apartment ?? rules.apartment,
+        area: parsed.area ?? rules.area,
       },
     };
   } catch (e: any) {
@@ -172,9 +200,17 @@ export function parseRoadWithRules(text: string): RoadParse {
 
 export async function extractRoadPost(text: string): Promise<RoadParse> {
   try {
-    const { data, engine } = await callStructured<Omit<RoadParse, 'engine'>>(
+    const { data, engine } = await callStructured<any>(
       ROAD_SYSTEM, text, ROAD_SCHEMA, 700);
-    return { ...data, engine };
+    // Normalize: Gemini may return "name"/"type" instead of "place"/"kind"
+    const mentions: RoadMention[] = (data.mentions ?? []).map((m: any) => ({
+      place: m.place ?? m.name ?? '',
+      kind: m.kind ?? m.type ?? 'road',
+      status: m.status ?? 'unknown',
+      severity: m.severity ?? null,
+      alternative_route: m.alternative_route ?? null,
+    }));
+    return { is_road_related: data.is_road_related ?? mentions.length > 0, mentions, engine };
   } catch {
     return parseRoadWithRules(text);
   }
