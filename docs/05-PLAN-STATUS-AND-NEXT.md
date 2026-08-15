@@ -1,5 +1,5 @@
 # 05 — Wusool: what is built, what is left
-### Paste-ready status · updated after the frontend and backend were connected
+### Paste-ready status · updated after the real map data landed and the repo went up
 
 Supersedes the status section of `04-STATUS-AND-DESIGN-BRIEF.md`. That file is still the
 authority on **design**; this one is the authority on **state and plan**.
@@ -20,23 +20,74 @@ applicability in Palestine 15%, AI/data quality 15%, UX 10%, scalability 5%, pro
 
 | Piece | State | Where |
 |---|---|---|
-| Interactive prototype (3 roles) | **Done** — redesigned, light mode, 4-step flow | Claude artifact (private link, Ruba's account only) |
-| Backend API | **Done** — 23/23 e2e tests, 0 type errors | `~/wusool/backend` |
-| Shared API contract | **Done** | `~/wusool/shared/contract.ts` |
-| Frontend wired to backend | **DONE** — 18/18 browser e2e tests | `~/wusool/frontend` |
-| Road-post simulator (paste a Telegram message) | **DONE** — was missing entirely | dispatch → Learning tab |
-| Real React app (Vite + Leaflet) | **Not needed** — Option A executed, see §5 | — |
-| OSM landmark bulk seed | **DONE** — 2,753 entities from a live Overpass pull | `npm run osm` |
-| Checkpoint coordinates verified | **DONE** — 6 of 8 were wrong, one by 2.7 km | `npm run checkpoints` |
-| Measured location accuracy | **DONE** — 1270 m → 87 m → 9 m | `npm run bench` |
-| Telegram listener | **DONE** — live mode + replay mode | `telegram/listener.py` |
-| Slides / pitch | **NOT DONE** | — |
+| Backend API | **Done** — 22/22 smoke assertions, 0 type errors | `backend/` |
+| Shared API contract | **Done** | `shared/contract.ts` |
+| Frontend, wired to the backend | **Done** — 25/25 browser assertions | `frontend/index.html` |
+| Served from one origin, no internet | **Done** — Express serves the app | `http://localhost:4000` |
+| Road-post simulator (paste a Telegram message) | **Done** | dispatch → Learning tab |
+| OSM landmark bulk seed | **Done** — 2,753 entities from a live Overpass pull | `npm run osm` |
+| Checkpoint coordinates verified | **Done** — 6 of 8 were wrong, one by 2.7 km | `npm run checkpoints` |
+| Measured location accuracy | **Done** — 1270 m → 87 m → 9 m | `npm run bench` |
+| Telegram listener | **Done** — live mode + replay mode | `telegram/listener.py` |
+| Code shared with the team | **Done** — private GitHub repo | see §1b |
+| Real React app (Vite + Leaflet) | **Not needed** — Option A executed | — |
+| LLM cache warmed | **Blocked** — needs an `ANTHROPIC_API_KEY` | not a blocker, see §7 |
+| Slides / pitch rehearsal | **Not done** | — |
+
+**Size:** 2,948 lines of TypeScript, 3,256 lines of frontend, 187 lines of Python,
+46 tracked files.
 
 ---
 
-## 2 · What the prototype does (built and working)
+## 1b · Where the code lives
 
-A single self-contained HTML file. No backend, no build. Used for the stage demo.
+```
+https://github.com/SimplyRuba/wusool        (private)
+```
+
+```bash
+git clone https://github.com/SimplyRuba/wusool.git
+cd wusool/backend && npm install && npm run seed && npm run dev
+# open http://localhost:4000
+```
+
+No API key, no build step, no native compiles, and no internet needed after the clone.
+The repo carries the committed OSM landmark extract, so a fresh clone runs the full demo
+offline. `.env`, the SQLite database and `node_modules` are gitignored — the database is
+rebuilt by `npm run seed` in a couple of seconds.
+
+The specs and these status docs are in `docs/`.
+
+---
+
+## 2 · How to run it
+
+```bash
+cd backend
+npm install                              # ~7s, no native builds
+npm run seed                             # 8 checkpoints, 2753 landmarks, 294 deliveries
+npm run dev                              # http://localhost:4000  <- API *and* UI
+npm run smoke                            # 22 assertions, in another terminal
+```
+
+Then open `http://localhost:4000/_e2e.html` for the 25 browser assertions.
+
+```bash
+npm run osm                              # re-pull landmarks from OpenStreetMap
+npm run checkpoints -- --fix             # re-check checkpoint coordinates against OSM
+DB_PATH=/tmp/bench.db npm run seed       # measure location accuracy, on a scratch DB
+DB_PATH=/tmp/bench.db npm run bench      #   never the demo one
+npm run warm                             # bake the LLM cache (needs a key)
+
+cd ../telegram && python3 listener.py --replay --delay 3    # feed road reports in
+```
+
+**`npm run seed` wipes and rebuilds the database.** That is by design, but if anyone pins
+buildings while rehearsing, re-seeding resets that learning. Worth knowing before a run-through.
+
+---
+
+## 3 · What the product does (built and working)
 
 **Customer — a 4-step flow, one idea per screen**
 1. `وين نوصّلك؟` — type or speak the address, pick a demo scenario, see the cart
@@ -46,29 +97,29 @@ A single self-contained HTML file. No backend, no build. Used for the stage demo
 
 **Driver** — phone mock with route, offline mode, checkpoint reporting, first-delivery
 doorway capture, zero-call completion. **Dispatch** — three tabs: Overview (KPIs + live
-fleet map), Learning (ghost-landmark feed + address DB), Impact (charts).
+fleet map), Learning (ghost-landmark feed, road-post simulator, address DB), Impact
+(measured accuracy panel + charts).
 
-Genuinely working, not scripted: the address parser really parses arbitrary typed input;
-confidence is computed from how tightly the entities constrain a point (including a −24
-penalty for unplanned camp fabric); the maps are procedurally rendered on canvas; the three
-roles are wired to each other (a driver's checkpoint report shows up in dispatch).
+Nothing on those screens is scripted. The engine trace streams the server's real
+`explain[]`; the entity tags come from the server's parse; the confidence is computed from
+how tightly the entities constrain a point; the KPIs are SQL over real rows. Confirming the
+building on step 3 creates the order and posts the pin, which is the write that positions
+the building entity — so the neighbour effect that follows is *caused* by that tap, live.
+
+**The simulation is still there as a fallback.** On boot the app probes `/api/health`.
+Live backend → a green "متصل بالخادم" pill and every screen reads real data. Server killed
+mid-demo → it silently drops back to the in-browser simulation and keeps going. The pill
+always tells the truth about which one is running.
 
 Business layer: **Address Trust Score** (7 factors) → **dynamic pricing** ₪20 → ₪17 → ₪15 →
 ₪14, plus **Dukkan pickup** (₪10), **Neighbour Split** (−40%), and **COD gated by trust**.
 
 ---
 
-## 3 · What the backend does (built and working)
+## 4 · What the backend does
 
-Node 20+ / TypeScript / Express / SQLite. **2,022 lines. 23/23 end-to-end tests pass.**
-
-```bash
-cd ~/wusool/backend
-npm install     # ~7s, no native builds
-npm run seed    # 8 checkpoints, 28 landmarks, 294 synthetic deliveries
-npm run dev     # http://localhost:4000
-npm run smoke   # 23 assertions across the four demo paths
-```
+Node 22+ / TypeScript / Express / SQLite (`node:sqlite`, no native build; Node strips the
+types natively, so there is no build step at all).
 
 ### It runs with no API key and no internet
 `ANTHROPIC_API_KEY` is **optional**. Without it a rule-based Arabic engine handles
@@ -93,13 +144,14 @@ plain-language `explain[]` array, so the dashboard can show *why* it believes so
 - **B** different wording + different phone → **tier 2, 0.80, resolved**, badge reads
   "already on the map from 1 prior delivery"
 - **C** `الوضع عالكونتينر مسكر بالكامل` → matched حاجز الكونتينر → closed, 0 min stale
-- **D** 5 driver tasks, OSRM route 1495 m, 1 rejected alternative named by its closure
+- **D** 6 driver tasks, OSRM route 1380 m, alternatives scored by checkpoint penalties
 
 ---
 
-## 4 · Bugs found and fixed (worth knowing — several were demo-killers)
+## 5 · Bugs found and fixed
 
-**In the original specs:**
+### 5a · In the original specs — several were demo-killers
+
 1. **The neighbour-effect demo could never fire.** Tier 2 needs a building entity *with
    coordinates*; the pin handler attached the entity but never positioned it, and the only
    rule that set coordinates needed 3 confirmations plus a completed delivery. Fixed: a pin
@@ -115,7 +167,8 @@ plain-language `explain[]` array, so the dashboard can show *why* it believes so
    schema-valid JSON instead of "please return only JSON"), `temperature` removed (rejected
    on Sonnet 5), thinking explicitly disabled (adaptive is on by default and adds seconds).
 
-**Found while building — one is serious:**
+### 5b · Found while building on 28 hand-written landmarks
+
 6. **Entity resolution merged different buildings.** Levenshtein ≤2 across a whole phrase
    matched `عمارة زيدان` to `عمارة حمدان` — two edits inside the family name, two different
    buildings, one merged entity, a driver sent to the wrong address. Fixed by stripping
@@ -127,87 +180,48 @@ plain-language `explain[]` array, so the dashboard can show *why* it believes so
    which is how people actually type. The parser now splits on relation words and place
    stems without breaking compounds like `سوبر ماركت`.
 
----
+### 5c · Found when the data got real — the important ones
 
-## 4b · Option A is done — the two halves are connected
+Everything above ran against 28 hand-written landmarks. Replacing them with the real
+OpenStreetMap extract (**2,753 entities, 4,766 aliases**, Ramallah out to Birzeit and Jifna)
+broke the matcher in four ways that 28 landmarks could never have exposed. All four are the
+same shape: *precision that was free at small scale has to be earned at real scale.*
 
-Gemini's call was taken. The prototype now talks to the real backend, and the whole thing
-runs from **one URL with no internet**:
+9. **A shop matched a different shop 6 km away.** Stripping generic stems left seven
+   Ramallah places sharing the token "الامل" — a supermarket, two pharmacies, a
+   kindergarten, a petrol station. The stem says what KIND of place it is, and that is
+   enough to rule a match out. "صيدلية الأمل" is no longer "سوبرماركت الأمل"; "عمارة زيدان"
+   still matches "برج زيدان".
+10. **An exact name match in the wrong town beat a fuzzy match in the right one.** A single
+    exact alias hit was returned with no distance check at all.
+11. **Chain names were guessed silently.** "بنك فلسطين" is six branches over 8.7 km; 127
+    alias strings point at places >500 m apart. The engine now picks the nearest, counts the
+    rivals it could not rule out, subtracts 0.12 and says so in `explain[]` — which drops
+    that order into the band where we ask for one tap.
+    **Saying "I know the name but not which one" is the correct answer.**
+12. **"عبد الناصر" never matched "عبدالناصر"** — 0.33 token overlap, judged different
+    mosques. Normalisation now joins عبد / أبو / ابن / بن to the word after it.
 
-```bash
-cd ~/wusool/backend && npm install && npm run seed && npm run dev
-# open http://localhost:4000
-```
-
-- **The published Claude artifact could never have done this.** Artifacts run under a CSP
-  that blocks every external host, so a hosted page cannot call `localhost`. The app is
-  therefore served by Express itself — same origin, no CORS, no mixed content, no internet.
-- **The simulation is still the fallback.** On boot the app probes `/api/health`. Live
-  backend → a green "متصل بالخادم" pill and every screen reads real data. Server down or
-  killed mid-demo → it silently drops back to the in-browser simulation and keeps going.
-  The pill always tells the truth about which one is running.
-- **The engine trace is now real.** Step 2 streams the server's actual `explain[]`, the
-  entity graph matches with their IDs and confidences (`#69 "عمارة زيدان" [learned conf 0.65]`),
-  the tier and the geocode. Nothing on that screen is scripted any more.
-- **The pin writes to the graph.** Confirming the building on step 3 creates the order and
-  posts the pin, which is what positions the building entity — so the neighbour effect that
-  follows is caused by that tap, live.
-- **New: the road-post simulator** (spec `02-FRONTEND §Route 4.3`, previously unbuilt).
-  Paste a real dialect Telegram message in dispatch → Learning; the same parser that reads
-  addresses matches the checkpoint, flips it red, and updates the incident board.
-
-Verified in a real browser against the real server and database — **18/18**:
-resolve → tier 3 @ 0.70 → order → pin → **neighbour resolves at tier 2 @ 0.80, learned_from=1**
-→ dialect road post closes حاجز الكونتينر → driver manifest loads 6 real tasks → KPIs read
-84.8% auto-resolution from 295 verified addresses.
-
----
-
-## 4c · Second pass — the data got real, and it broke things
-
-Everything above ran against 28 hand-written landmarks. Replacing them with the
-real OpenStreetMap extract (**2,753 entities, 4,766 aliases**, from Ramallah out
-to Birzeit and Jifna) broke the matcher in four ways that 28 landmarks could
-never have exposed. All four are the same shape: *precision that was free at
-small scale has to be earned at real scale.*
-
-1. **A shop matched a different shop 6 km away.** Stripping generic stems left
-   seven Ramallah places sharing the token "الامل" — a supermarket, two
-   pharmacies, a kindergarten, a petrol station. The stem says what KIND of place
-   it is, and that is enough to rule a match out. "صيدلية الأمل" is no longer
-   "سوبرماركت الأمل"; "عمارة زيدان" still matches "برج زيدان".
-2. **An exact name match in the wrong town beat a fuzzy match in the right one.**
-   A single exact hit was returned with no distance check at all.
-3. **Chain names were guessed silently.** "بنك فلسطين" is six branches over
-   8.7 km; 127 alias strings point at places >500 m apart. The engine now picks
-   the nearest, counts the rivals it could not rule out, subtracts 0.12 and says
-   so — which drops that order into the band where we ask for one tap.
-   **Saying "I know the name but not which one" is the correct answer.**
-4. **"عبد الناصر" never matched "عبدالناصر"** — 0.33 token overlap, judged
-   different mosques. Normalisation now joins عبد / أبو / ابن / بن.
-
-**Checkpoint coordinates were wrong.** Six of the eight, one (عطارة) by 2.7 km.
-A checkpoint in the wrong place is worse than a missing one: the router avoids a
-closure 3 km from the real road, sends the driver through the actual one, and
-reports success. `npm run checkpoints` now verifies them against OSM by
-proximity. زعترة has no OSM feature and stays flagged rather than quietly
-"corrected".
-
-**A road report saying there was NO traffic was read as traffic.** "مافي زحمة"
-matched the congestion word and won — the worst possible failure, because it
-routes drivers away from the one clear road. The road parser now handles
-negation and covers سكر / فتح / بطيء / تفتيش / حاجز طيار, which it ignored
-entirely. Hand-checked on 14 real dialect posts: 14/14.
+13. **Checkpoint coordinates were wrong.** Six of the eight, one (عطارة) by 2.7 km. A
+    checkpoint in the wrong place is worse than a missing one: the router avoids a closure
+    3 km from the real road, sends the driver through the actual one, and reports success.
+    `npm run checkpoints` now verifies them against OSM by proximity, and refuses to "correct"
+    anything it cannot confirm.
+14. **A road report saying there was NO traffic was read as traffic.** "مافي زحمة" matched
+    the congestion word and won — the worst possible failure, because it routes drivers away
+    from the one clear road. The road parser now handles negation and covers
+    سكر / فتح / بطيء / تفتيش / حاجز طيار, which it ignored entirely. Hand-checked on 14 real
+    dialect posts: 14/14.
 
 ---
 
-## 4d · Location accuracy is now a measured number, not a claim
+## 6 · Location accuracy is a measured number, not a claim
 
 Accuracy is 30% of the score and it was the one thing argued from a screenshot.
-`npm run bench` un-learns every building, resolves from the text alone, then
-pins each building once and resolves a **differently worded** address from a
-**different phone**. Every simulated pin carries 12 m of GPS error, so the warm
-number is not 0 by construction.
+`npm run bench` un-learns every building, resolves from the text alone, then pins each
+building once and resolves a **differently worded** address from a **different phone**.
+Ground truth is the building's known position. Every simulated pin carries 12 m of GPS
+error, so the warm number is not 0 by construction.
 
 | | median | p90 | within 100 m |
 |---|---|---|---|
@@ -215,37 +229,51 @@ number is not 0 by construction.
 | Wusool, from the text alone | **87 m** | 1376 m | 56% |
 | Wusool, after ONE customer pin | **9 m** | 12 m | 100% |
 
-27 buildings, on a scratch database that never touches the demo one. This is
-Gemini's split-screen accuracy comparison, expressed as a number instead of a
-screenshot — and it is on the dashboard, read from `seed/accuracy.json`.
+27 buildings, on a scratch database that never touches the demo one. 11 buildings were
+excluded for having a duplicate generated name and 2 for having only one phrasing — the
+exclusions are printed, not silent. This is Gemini's split-screen accuracy comparison,
+expressed as a number instead of a screenshot, and it is on the dashboard Impact tab, read
+from `seed/accuracy.json`.
 
-The middle row is the honest one to lead with: **87 m from nothing but a
-sentence a person typed**, where a mapping app gives you the city.
+The middle row is the honest one to lead with: **87 m from nothing but a sentence a person
+typed**, where a mapping app gives you the city.
 
 ---
 
-## 5 · What is left — in priority order
+## 6b · Verification — what is actually checked
 
-### ~~P0 · Connect the two halves~~ — **DONE** (see §4b)
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | clean |
+| `npm run smoke` — backend, four demo paths | **22 / 22** |
+| `_e2e.html` — real browser against the live server | **25 / 25** |
+| Same e2e, run three times consecutively | 25/25 each time |
+| Arabic place-name matcher, hand-built cases | 11 / 11 |
+| Road-post parser, real dialect posts | 14 / 14 |
 
-### ~~P1 · Make the data real~~ — **DONE** (see §4c)
-- ~~Overpass pull~~ — 2,753 entities, committed. `npm run osm` refreshes it.
-- ~~Verify the 8 checkpoint coordinates~~ — six were wrong; `npm run checkpoints` now
-  checks them against OSM. **زعترة still has no OSM feature and stays flagged** —
-  someone who knows the junction should confirm 32.11200, 35.27600 by eye.
-- **`npm run warm` still needs an API key.** Without one the rule engine runs the whole
-  demo, so this is an enhancement, not a blocker.
+The e2e suite is repeatable by design: it picks its own customer phone number and finds a
+building the graph has never seen, so the cold → pin → neighbour path is exercised on every
+run rather than once per seed.
 
-### ~~P2 · Road intelligence input~~ — **DONE** (see §4c)
-- `telegram/listener.py` — live Telethon mode, plus a **replay mode that is the default**.
-  Replay streams recorded dialect messages through the same endpoint the live listener
-  uses, so the demo never waits on somebody posting at the right moment.
-- Real Telegram credentials are optional and were deliberately not pursued.
+---
 
-### P3 · Pitch
-- 3-minute demo script (draft in `03-INTEGRATION §7`) rehearsed against the real system
-- Slides: SDK embed snippet, flywheel diagram (already drawn in
-  `smart-addressing-system-diagrams.html`), pricing tiers, scalability
+## 7 · What is left
+
+### ~~P0 · Connect the two halves~~ — **DONE** (§3)
+### ~~P1 · Make the data real~~ — **DONE** (§5c)
+### ~~P2 · Road intelligence input~~ — **DONE** (§5c)
+
+### Still open, in order of how much they matter
+
+1. **زعترة's coordinate is unverified.** No OSM checkpoint feature exists there, so it stays
+   flagged rather than quietly "corrected". Someone who knows the junction should confirm
+   **32.11200, 35.27600** by eye. ~2 minutes, and it is the only unverified coordinate left.
+2. **`npm run warm` needs an `ANTHROPIC_API_KEY`.** Without one the rule engine runs the
+   entire demo, so this is an enhancement rather than a blocker. With one, the LLM path
+   handles messier input than the rules do, and the cache makes it work with the wifi off.
+3. **Pitch rehearsal.** The 3-minute script draft is in `03-INTEGRATION §7`; it now needs to
+   be run against the real system, since the numbers changed.
+4. **A native Arabic review pass** on the colloquial headlines.
 
 ### Stretch — only if everything above is done
 - Cadastral join to GeoMOLG / Ramallah GIS (the `official` field already exists in the
@@ -254,21 +282,21 @@ sentence a person typed**, where a mapping app gives you the city.
 
 ---
 
-## 6 · Decisions the team needs to make
+## 8 · Decisions
 
-1. ~~Option A or B in P0~~ — **decided: Option A, and shipped.** See §4b.
-2. **Is dynamic pricing demoed live or left on a slide?** The specs put pricing tiers in
-   "slides only", but it is fully working in the prototype and it is the feature that most
-   directly shows business value. Demoing it costs nothing.
-3. ~~Which single moment does the demo build toward?~~ — **decided: the tier-2 neighbour
-   badge is the money shot; the road post is the supporting act.** Both are now live, so
-   the sequencing is a rehearsal question, not a build question.
-4. **Does the Arabic copy need a native review pass?** The headlines are deliberately
-   colloquial (`وين نوصّلك؟`, `سعرك، ومن وين إجا`).
+1. ~~Option A or B~~ — **decided: Option A, and shipped.** The prototype was wired to the
+   backend rather than rewritten in React/Vite.
+2. ~~Which single moment does the demo build toward?~~ — **decided: the tier-2 neighbour
+   badge is the money shot; the road post is the supporting act.** Both are live, so
+   sequencing is a rehearsal question, not a build question.
+3. ~~How do we demonstrate the 30% accuracy criterion?~~ — **decided: measure it.** §6.
+4. **Still open — is dynamic pricing demoed live or left on a slide?** The specs put pricing
+   tiers in "slides only", but it is fully working and it is the feature that most directly
+   shows business value. Demoing it costs nothing.
 
 ---
 
-## 7 · Constraints for anyone proposing changes
+## 9 · Constraints for anyone proposing changes
 
 - **Light mode only.** No dark mode. Do not propose one.
 - **Keep the step/tab structure.** One idea per screen. An earlier version crammed 12 cards
@@ -280,20 +308,32 @@ sentence a person typed**, where a mapping app gives you the city.
   18–30px, aurora ambience. Full detail in `04-STATUS-AND-DESIGN-BRIEF.md §3`.
 - **The product is Wusool (وصول)**, not WASEL. The teal/IBM Plex direction in
   `02-FRONTEND-SPEC.md` is superseded.
+- **Do not add a dependency that needs a native build.** `npm install` must not be able to
+  fail on a toolchain the night before the demo. That is why `node:sqlite` replaced
+  `better-sqlite3`.
+- **Nothing on stage may require the internet.** Overpass is used by `npm run osm` and
+  `npm run checkpoints` only; both write committed files.
 
 ---
 
-## 8 · Specific questions for Gemini
+## 10 · Questions for Gemini
 
-1. Given ~2 days of work left, is Option A the right call in §5-P0, or is there a reason to
-   pay for the React rewrite?
-2. Which of the two candidate "money shot" moments in §6.3 lands harder with judges, and how
-   would you sequence the 3 minutes around it?
-3. The judging rubric weights **location accuracy at 30%** — what is the most credible way to
-   *demonstrate* accuracy live, beyond showing a confidence number? Is there a comparison
-   against Google Maps we could stage honestly?
-4. What is the most likely hostile question from a judge, and what should the answer be?
-   (Current prepared answers: gaming the points system, privacy of phone data, wrong-neighbour
-   pins, why Google will not just do this, and offline areas.)
-5. Anything in the business layer — dynamic pricing, Dukkan hubs, neighbour split, COD tiers —
-   that a judge from a Palestinian delivery company would immediately poke a hole in?
+Answered since the last version, and no longer open: Option A vs the React rewrite (A,
+shipped); which moment is the money shot (the neighbour badge); and how to demonstrate the
+accuracy criterion (measure it — §6). What is still worth a second opinion:
+
+1. **The accuracy table in §6 is the strongest asset and also the most attackable.** The
+   ground truth is synthetic — 40 generated buildings anchored near real OSM landmarks. Is
+   that fatal to the claim, or defensible if stated plainly? What is the cheapest way to get
+   even 15–20 *real* address/coordinate pairs to re-run it against?
+2. **"87 m from the text alone" vs "9 m after one pin" — which should lead the pitch?** The
+   first is the more surprising number; the second is the product's actual promise.
+3. **Tier 3 still falls back to a city centroid 9 times in 27 (§6 cold pass, T4).** Those are
+   addresses naming no landmark the graph knows. Is it better to show that honestly as
+   "asks for one tap", or to invest the remaining time in widening landmark coverage?
+4. **What is the most likely hostile question from a judge, and what should the answer be?**
+   Prepared: gaming the points system, privacy of phone data, wrong-neighbour pins, why
+   Google will not just do this, offline areas, and now — "your accuracy benchmark is
+   measured against your own synthetic data".
+5. **Anything in the business layer** — dynamic pricing, Dukkan hubs, neighbour split, COD
+   tiers — that a judge from a Palestinian delivery company would immediately poke a hole in?
