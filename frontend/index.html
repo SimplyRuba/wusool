@@ -2214,7 +2214,7 @@ function renderCustSide(){
         '</div></div>';
     $$('[data-sc]').forEach(b=>b.onclick=()=>{
       S.c.sc=b.dataset.sc; const s=SCEN.find(x=>x.id===b.dataset.sc);
-      if(s){S.c.text=s.text;S.c.presetId=s.id;}
+      if(s){S.c.text=s.raw[LANG];S.c.presetId=s.id;}
       renderCustomer();
     });
   } else if(step===2){
@@ -2287,7 +2287,7 @@ function wireAddress(){
   $$('[data-scen]').forEach(b=>b.onclick=()=>setScenario(b.dataset.scen));
   $$('[data-sc]').forEach(b=>b.onclick=()=>{
     S.c.sc=b.dataset.sc; const s=SCEN.find(x=>x.id===b.dataset.sc);
-    if(s){S.c.text=s.text;S.c.presetId=s.id;}
+    if(s){S.c.text=s.raw[LANG];S.c.presetId=s.id;}
     renderCustomer();
   });
   const mic=$('#mic-btn'); if(mic) mic.onclick=startVoice;
