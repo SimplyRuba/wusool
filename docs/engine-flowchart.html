@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WUSOOL — Resolution Engine Flowchart</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: #f5f7fb;
+    color: #1e293b;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #64748b;
+    font-size: 15px;
+    margin-bottom: 40px;
+  }
+
+  /* Flow elements */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .arrow {
+    width: 3px;
+    height: 32px;
+    background: linear-gradient(180deg, #5a86ff, #6d28d9);
+    position: relative;
+  }
+  .arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 8px solid #6d28d9;
+  }
+  .arrow.yes {
+    background: #10b981;
+  }
+  .arrow.yes::after {
+    border-top-color: #10b981;
+  }
+  .arrow.no {
+    background: #ef4444;
+  }
+  .arrow.no::after {
+    border-top-color: #ef4444;
+  }
+  .arrow-label {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 10px;
+    margin: 4px 0;
+  }
+  .arrow-label.yes { background: #d1fae5; color: #065f46; }
+  .arrow-label.no { background: #fee2e2; color: #991b1b; }
+
+  /* Nodes */
+  .node {
+    border-radius: 20px;
+    padding: 20px 28px;
+    width: 100%;
+    max-width: 720px;
+    position: relative;
+  }
+  .node-input {
+    background: linear-gradient(135deg, #5a86ff, #3961fb, #6d28d9);
+    color: white;
+    text-align: center;
+  }
+  .node-input h2 { font-size: 18px; font-weight: 800; }
+  .node-input p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+
+  .node-process {
+    background: white;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 4px 24px rgba(15,23,42,0.06);
+  }
+  .node-decision {
+    background: white;
+    border: 2px solid #5a86ff;
+    box-shadow: 0 4px 24px rgba(90,134,255,0.12);
+  }
+  .node-result {
+    text-align: center;
+    font-weight: 700;
+  }
+  .node-result.good {
+    background: #d1fae5;
+    border: 2px solid #10b981;
+    color: #065f46;
+  }
+  .node-result.warn {
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+    color: #92400e;
+  }
+  .node-result.ask {
+    background: #fee2e2;
+    border: 2px solid #ef4444;
+    color: #991b1b;
+  }
+  .node-enrich {
+    background: linear-gradient(135deg, rgba(90,134,255,0.08), rgba(109,40,217,0.08));
+    border: 2px solid rgba(109,40,217,0.2);
+  }
+
+  .node-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .node-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .node-title {
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .node-desc {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.6;
+  }
+  .tier-badge {
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    background: linear-gradient(135deg, #5a86ff, #6d28d9);
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 12px;
+    border-radius: 10px;
+  }
+  .conf {
+    display: inline-block;
+    background: #f1f5f9;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 6px;
+  }
+
+  /* Side branches */
+  .branch-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    max-width: 720px;
+  }
+  .branch-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .branch-side {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .branch-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 40px;
+    height: 3px;
+    background: #10b981;
+  }
+  .branch-line::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 7px solid #10b981;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    background: white;
+    border-radius: 16px;
+    border: 2px solid #e2e8f0;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .footer h3 { font-size: 16px; margin-bottom: 8px; }
+  .footer p { font-size: 13px; color: #64748b; line-height: 1.6; }
+
+  .flywheel {
+    background: linear-gradient(135deg, #5a86ff, #6d28d9);
+    color: white;
+    padding: 20px 28px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .flywheel h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+  .flywheel p { font-size: 13px; opacity: 0.9; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>WUSOOL Resolution Engine</h1>
+<p class="subtitle">4-tier cascade — cheapest knowledge first, learns from every delivery</p>
+
+<div class="flow">
+
+  <!-- INPUT -->
+  <div class="node node-input">
+    <h2>Customer types a dialect Arabic address</h2>
+    <p>"رام الله، قرب المسجد، عمارة زيدان، ط٣"</p>
+  </div>
+
+  <div class="arrow"></div>
+
+  <!-- PARSE -->
+  <div class="node node-process">
+    <div class="node-header">
+      <div class="node-icon" style="background:#ede9fe;color:#6d28d9">🧠</div>
+      <div>
+        <div class="node-title">AI Parser (or Offline Rule Engine)</div>
+        <div class="node-desc">Gemini 3.5 Flash extracts structured entities from colloquial text. Falls back to rule-based Arabic parser when offline.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="conf">city: رام الله</span>
+      <span class="conf">building: عمارة زيدان</span>
+      <span class="conf">landmark: المسجد</span>
+      <span class="conf">floor: 3</span>
+      <span class="conf">relation: قرب (near)</span>
+    </div>
+  </div>
+
+  <div class="arrow"></div>
+
+  <!-- TIER 1 -->
+  <div class="node node-decision">
+    <span class="tier-badge">TIER 1</span>
+    <div class="node-header">
+      <div class="node-icon" style="background:#dbeafe;color:#2563eb">👤</div>
+      <div>
+        <div class="node-title">Has THIS person sent THIS address before?</div>
+        <div class="node-desc">Check phone hash + normalized text similarity ≥ 85% against verified addresses in the database.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;width:100%;max-width:720px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <span class="arrow-label no">NO MATCH</span>
+      <div class="arrow no" style="height:20px"></div>
+    </div>
+    <div style="flex:0 0 240px;display:flex;flex-direction:column;align-items:center">
+      <span class="arrow-label yes">MATCH ✓</span>
+      <div class="arrow yes" style="height:20px"></div>
+      <div class="node node-result good" style="padding:12px 16px;font-size:13px">
+        Confidence 0.98 — RESOLVED<br>Instant, use stored GPS
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER 2 -->
+  <div class="node node-decision" style="margin-top:8px">
+    <span class="tier-badge">TIER 2 — THE FLYWHEEL</span>
+    <div class="node-header">
+      <div class="node-icon" style="background:#d1fae5;color:#059669">🏘️</div>
+      <div>
+        <div class="node-title">Has ANYONE pinned this BUILDING before?</div>
+        <div class="node-desc">Match building name to entity graph (fuzzy: Levenshtein ≤2 or token overlap ≥0.6). If the building entity has coordinates → neighbor effect.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;width:100%;max-width:720px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <span class="arrow-label no">NO MATCH</span>
+      <div class="arrow no" style="height:20px"></div>
+    </div>
+    <div style="flex:0 0 240px;display:flex;flex-direction:column;align-items:center">
+      <span class="arrow-label yes">MATCH ✓</span>
+      <div class="arrow yes" style="height:20px"></div>
+      <div class="node node-result good" style="padding:12px 16px;font-size:13px">
+        Confidence 0.80 — RESOLVED<br>"Learned from neighbor's delivery"
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER 3 -->
+  <div class="node node-decision" style="margin-top:8px">
+    <span class="tier-badge">TIER 3</span>
+    <div class="node-header">
+      <div class="node-icon" style="background:#fef3c7;color:#d97706">📍</div>
+      <div>
+        <div class="node-title">Can we triangulate from named LANDMARKS?</div>
+        <div class="node-desc">Match each landmark to the entity graph (2,753 OSM landmarks). Compute weighted centroid of matched positions.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="conf">1 landmark → 0.55</span>
+      <span class="conf">2 landmarks → 0.70</span>
+      <span class="conf">3+ landmarks → 0.80</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;width:100%;max-width:720px">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <span class="arrow-label no">NO LANDMARKS</span>
+      <div class="arrow no" style="height:20px"></div>
+    </div>
+    <div style="flex:0 0 240px;display:flex;flex-direction:column;align-items:center">
+      <span class="arrow-label yes">FOUND ✓</span>
+      <div class="arrow yes" style="height:20px"></div>
+      <div class="node node-result warn" style="padding:12px 16px;font-size:13px">
+        Confidence 0.55–0.80 — ESTIMATED<br>Approximate location from landmarks
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER 4 -->
+  <div class="node node-decision" style="margin-top:8px">
+    <span class="tier-badge">TIER 4</span>
+    <div class="node-header">
+      <div class="node-icon" style="background:#fee2e2;color:#dc2626">❓</div>
+      <div>
+        <div class="node-title">Cold — nothing matched</div>
+        <div class="node-desc">Fall back to city centroid. Confidence 0.20. Generate a pin token — customer taps once on the satellite map to confirm.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow no" style="height:20px"></div>
+  <div class="node node-result ask" style="max-width:720px;padding:14px 20px;font-size:14px">
+    Confidence 0.20 — NEEDS PIN<br>
+    <span style="font-weight:400;font-size:12px">Customer taps once → building learned → next person gets Tier 2</span>
+  </div>
+
+  <div class="arrow" style="height:40px"></div>
+
+  <!-- ENRICHMENT -->
+  <div class="node node-enrich" style="max-width:720px">
+    <div class="node-header">
+      <div class="node-icon" style="background:rgba(109,40,217,0.12);color:#6d28d9">🏛️</div>
+      <div>
+        <div class="node-title">Cadastral Enrichment — Ramallah Municipality GIS</div>
+        <div class="node-desc">GPS → project to Palestine Grid (EPSG:28191) → query parcels + buildings layers → attach official neighborhood, street address, postcode.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <span class="conf" style="background:rgba(109,40,217,0.08)">حي قدورة</span>
+      <span class="conf" style="background:rgba(109,40,217,0.08)">حوض 19-المدينة</span>
+      <span class="conf" style="background:rgba(109,40,217,0.08)">16 شارع خليل صلاح</span>
+      <span class="conf" style="background:rgba(109,40,217,0.08)">6008960</span>
+    </div>
+  </div>
+
+  <div class="arrow" style="height:40px"></div>
+
+  <!-- OUTPUT -->
+  <div class="node node-input" style="text-align:center">
+    <h2>Resolution Complete</h2>
+    <p>GPS + Official Address + Confidence Score + Engine Trace</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+      <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:8px;font-size:12px">📍 31.9033, 35.2058</span>
+      <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:8px;font-size:12px">🏛 حي قدورة</span>
+      <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:8px;font-size:12px">🛡 Confidence 80%</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Flywheel -->
+<div style="margin-top:40px">
+  <div class="flywheel">
+    <h3>The Flywheel — Why It Gets Better</h3>
+    <p>
+      Every Tier 4 (ask for pin) becomes Tier 2 (instant) after one customer tap.<br>
+      Every delivery confirms the building, grows confidence, and discovers new landmarks.<br>
+      The more the system works, the fewer questions it asks.<br><br>
+      <strong>Day 1:</strong> Customer A pins عمارة زيدان → Tier 4 → building learned<br>
+      <strong>Day 2:</strong> Customer B types "بناية زيدان" → Tier 2 → instant, 0 calls<br>
+      <strong>Day 30:</strong> Every tenant → Tier 2 → zero pins, zero calls, lower fees
+    </p>
+  </div>
+</div>
+
+<!-- Data sources -->
+<div class="footer">
+  <h3>Data Sources Feeding the Engine</h3>
+  <p>
+    <strong>OpenStreetMap</strong> — 2,753 landmarks (mosques, pharmacies, roundabouts)<br>
+    <strong>Ramallah Municipality GIS</strong> — official neighborhoods, parcels, streets, postcodes<br>
+    <strong>Gemini 3.5 Flash AI</strong> — dialect Arabic parsing (free, cached for offline)<br>
+    <strong>Community Reports</strong> — checkpoint status from Telegram/WhatsApp<br>
+    <strong>Own Deliveries</strong> — every pin + delivery teaches the system (the flywheel)
+  </p>
+</div>
+
+</div>
+</body>
+</html>
