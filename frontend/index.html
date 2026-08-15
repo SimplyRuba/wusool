@@ -2105,35 +2105,44 @@ function renderCustScreen(step){
           ico('check')+(LANG==='ar'?' نعم، هذا مبناي':' Yes, this is my building')+'</button></div>';
 
   } else {
-    /* ── STEP 4: Price & Order ── shows the value of trust */
-    var baseFee=20, disc=baseFee-fee;
+    /* ── STEP 4: Price + Points System ── earn points, redeem for discounts */
+    var pinPoints=confPct>=75?10:confPct>=50?10:0;
+    var sparseBonus=confPct<60?10:0;
+    var totalPoints=pinPoints+sparseBonus;
+    var existingPoints=45; // simulated existing balance
+    var allPoints=existingPoints+totalPoints;
     b.innerHTML=
-      // Price hero
-      '<div style="text-align:center;padding:12px 0 4px">'+
-        '<div style="font-size:11px;color:var(--text-3);text-decoration:line-through;margin-bottom:2px">'+(disc>0?'₪'+baseFee:'')+'</div>'+
-        '<div style="font-size:42px;font-weight:800;color:var(--brand);letter-spacing:-2px">₪'+fee+'</div>'+
-        '<div style="font-size:14px;color:var(--text-2);margin-top:2px">'+(LANG==='ar'?'أجرة التوصيل':'Delivery fee')+'</div>'+
-        (disc>0?'<div style="margin-top:6px"><span class="pill good" style="font-size:13px">'+ico('check')+
-          (LANG==='ar'?'وفّرت ₪'+disc+' بفضل ثقة العنوان':'Saved ₪'+disc+' from address trust')+'</span></div>':'')+
-      '</div>'+
-      // Breakdown
-      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
-        '<span class="eyebrow" style="margin-bottom:8px">'+(LANG==='ar'?'تفاصيل السعر':'Price breakdown')+'</span>'+
-        '<div class="row"><span class="dim">'+(LANG==='ar'?'السعر الأساسي':'Base price')+'</span><b class="sp tnum">₪'+baseFee+'</b></div>'+
-        (disc>0?'<div class="row"><span style="color:var(--success-ink)">'+(LANG==='ar'?'خصم ثقة العنوان':'Address trust discount')+'</span><b class="sp tnum" style="color:var(--success-ink)">−₪'+disc+'</b></div>':'')+
-        '<div style="border-top:1px solid var(--border-strong);margin-top:8px;padding-top:8px" class="row"><b>'+(LANG==='ar'?'المجموع':'Total')+'</b><b class="sp tnum" style="font-size:18px;color:var(--brand)">₪'+fee+'</b></div>'+
+      // Price
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:14px;display:flex;align-items:center;gap:12px">'+
+        '<span style="flex:1"><span style="font-size:13px;color:var(--text-2)">'+(LANG==='ar'?'أجرة التوصيل':'Delivery fee')+'</span>'+
+          '<div style="font-size:32px;font-weight:800;color:var(--brand);letter-spacing:-1px">₪'+fee+'</div></span>'+
+        '<span style="width:48px;height:48px;border-radius:14px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center">'+ico('coins')+'</span>'+
       '</div></div>'+
-      // Trust summary
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
-        miniStat('shield',LANG==='ar'?'الدقة':'Accuracy',confPct+'%')+
-        miniStat('pin',LANG==='ar'?'المبنى':'Building',esc(building.split(' ').pop()))+
-        miniStat('brain',LANG==='ar'?'المحرّك':'Engine',bk.engine==='llm-cache'?'AI':(bk.engine||'—'))+
-      '</div>'+
-      // Explanation
-      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:10px 12px;font-size:12px;line-height:1.6;color:var(--text-2)">'+
+      // Points earned this order
+      '<div class="card" style="border-radius:var(--radius-md);border:1.5px solid rgba(16,185,129,.2)"><div class="card-bd" style="padding:14px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+          '<span style="font-size:18px">⭐</span>'+
+          '<b style="font-size:15px">'+(LANG==='ar'?'نقاط مكتسبة من هذا الطلب':'Points earned from this order')+'</b>'+
+        '</div>'+
+        (pinPoints>0?'<div class="row" style="margin-bottom:6px"><span style="font-size:13px">'+(LANG==='ar'?'تأكيد موقع المبنى':'Building location confirmed')+'</span><b class="sp" style="color:var(--success-ink)">+'+pinPoints+'</b></div>':'')+
+        (sparseBonus>0?'<div class="row" style="margin-bottom:6px"><span style="font-size:13px">'+(LANG==='ar'?'منطقة جديدة (مكافأة استكشاف)':'New area (explorer bonus)')+'</span><b class="sp" style="color:var(--success-ink)">+'+sparseBonus+'</b></div>':'')+
+        '<div style="border-top:1px solid var(--border-strong);margin-top:4px;padding-top:8px" class="row">'+
+          '<b style="font-size:13px">'+(LANG==='ar'?'المجموع المكتسب':'Total earned')+'</b>'+
+          '<b class="sp" style="font-size:18px;color:var(--success-ink)">+'+totalPoints+'</b></div>'+
+      '</div></div>'+
+      // Points balance
+      '<div class="card" style="border-radius:var(--radius-md)"><div class="card-bd" style="padding:12px">'+
+        '<span class="eyebrow" style="margin-bottom:8px">'+(LANG==='ar'?'رصيد النقاط':'Points balance')+'</span>'+
+        '<div class="row"><span class="dim">'+(LANG==='ar'?'رصيدك الحالي':'Current balance')+'</span><b class="sp tnum">'+existingPoints+'</b></div>'+
+        '<div class="row"><span style="color:var(--success-ink)">'+(LANG==='ar'?'من هذا الطلب':'From this order')+'</span><b class="sp tnum" style="color:var(--success-ink)">+'+totalPoints+'</b></div>'+
+        '<div style="border-top:1px solid var(--border-strong);margin-top:6px;padding-top:8px" class="row">'+
+          '<b>'+(LANG==='ar'?'الرصيد الجديد':'New balance')+'</b><b class="sp tnum" style="font-size:18px;color:var(--brand)">'+allPoints+' ⭐</b></div>'+
+      '</div></div>'+
+      // Redemption hint
+      '<div class="card" style="border-radius:var(--radius-md);background:linear-gradient(135deg,rgba(90,134,255,.06),rgba(109,40,217,.06))"><div class="card-bd" style="padding:10px 12px;font-size:12px;line-height:1.7;color:var(--text-2)">'+
         (LANG==='ar'
-          ?'🏘 تأكيدك للمبنى بيخفّض السعر مش بس إلك — كل جار بنفس العمارة بيستفيد. عنوان واحد موثّق = توصيل أرخص للجميع.'
-          :'🏘 Confirming your building lowers the price not just for you — every neighbor in the same building benefits. One verified address = cheaper delivery for all.')+
+          ?'💡 كل 50 نقطة = خصم ₪5 على طلبك القادم. أكّد مبناك مرة واحدة واكسب نقاط — وجيرانك بنفس العمارة كمان بيكسبوا!'
+          :'💡 Every 50 points = ₪5 off your next order. Confirm your building once and earn points — your neighbors in the same building earn too!')+
       '</div></div>'+
       // Order button
       '<button class="btn good block" data-go="0" style="font-size:16px;padding:15px;border-radius:16px">'+
