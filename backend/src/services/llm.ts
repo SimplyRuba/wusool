@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -12,24 +13,79 @@ export class LLMUnavailable extends Error {
   constructor(msg: string) { super(msg); this.name = 'LLMUnavailable'; }
 }
 
-/* Model choice: claude-sonnet-5 is the current Sonnet — it supports structured
-   outputs (Sonnet 4.6 does not), which is what turns "please return only JSON"
-   into a schema guarantee. Two things it requires that 4.6 did not:
-     - no `temperature`: non-default sampling parameters are rejected
-     - `thinking` must be disabled explicitly, because adaptive thinking is ON by
-       default and would add seconds of latency to every parse on stage. */
-const MODEL = process.env.LLM_MODEL ?? 'claude-sonnet-5';
-const USE_CACHE = process.env.LLM_CACHE !== '0';
-const hasKey = () => !!process.env.ANTHROPIC_API_KEY;
+/* ── Provider detection ─────────────────────────────────────────────── */
 
-let client: Anthropic | null = null;
-const getClient = () => (client ??= new Anthropic());
+const USE_CACHE = process.env.LLM_CACHE !== '0';
+const hasGemini = () => !!process.env.GEMINI_API_KEY;
+const hasAnthropic = () => !!process.env.ANTHROPIC_API_KEY;
+
+// Prefer Gemini (free) over Anthropic (paid)
+type Provider = 'gemini' | 'anthropic' | 'none';
+const provider = (): Provider =>
+  hasGemini() ? 'gemini' : hasAnthropic() ? 'anthropic' : 'none';
+
+/* ── Anthropic client ─────────────────────────────────────────────── */
+
+const ANTHROPIC_MODEL = process.env.LLM_MODEL ?? 'claude-sonnet-5';
+let anthropicClient: Anthropic | null = null;
+const getAnthropic = () => (anthropicClient ??= new Anthropic());
+
+/* ── Gemini client ────────────────────────────────────────────────── */
+
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
+let geminiClient: GoogleGenAI | null = null;
+const getGemini = () => (geminiClient ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! }));
+
+/* ── Cache ────────────────────────────────────────────────────────── */
 
 const keyOf = (system: string, user: string, schema: unknown) =>
-  createHash('sha1').update(MODEL + ' ' + system + ' ' + user +
-                            ' ' + JSON.stringify(schema)).digest('hex');
+  createHash('sha1').update(system + ' ' + user + ' ' + JSON.stringify(schema)).digest('hex');
 
 export type LLMResult<T> = { data: T; engine: 'llm' | 'llm-cache' };
+
+/* ── Gemini call ──────────────────────────────────────────────────── */
+
+async function callGemini<T>(
+  system: string, user: string, schema: Record<string, unknown>,
+): Promise<T> {
+  const ai = getGemini();
+  const res = await ai.models.generateContent({
+    model: GEMINI_MODEL,
+    contents: user,
+    config: {
+      systemInstruction: system,
+      responseMimeType: 'application/json',
+      responseSchema: schema as any,
+    },
+  });
+  const text = res.text;
+  if (!text) throw new LLMUnavailable('empty Gemini response');
+  return JSON.parse(text) as T;
+}
+
+/* ── Anthropic call ───────────────────────────────────────────────── */
+
+async function callAnthropic<T>(
+  system: string, user: string, schema: Record<string, unknown>, maxTokens: number,
+): Promise<T> {
+  const res = await getAnthropic().messages.create({
+    model: ANTHROPIC_MODEL,
+    max_tokens: maxTokens,
+    thinking: { type: 'disabled' },
+    system,
+    messages: [{ role: 'user', content: user }],
+    output_config: { format: { type: 'json_schema', schema } },
+  } as any);
+
+  if ((res as any).stop_reason === 'refusal')
+    throw new LLMUnavailable('request was declined by safety classifiers');
+
+  const text = (res.content as any[]).find(b => b.type === 'text')?.text;
+  if (!text) throw new LLMUnavailable('empty response');
+  return JSON.parse(text) as T;
+}
+
+/* ── Main entry point ─────────────────────────────────────────────── */
 
 /**
  * One structured call. Cached results never touch the network, so a warmed cache
@@ -44,37 +100,28 @@ export async function callStructured<T>(
     try { return { data: JSON.parse(readFileSync(file, 'utf8')) as T, engine: 'llm-cache' }; }
     catch { /* corrupt entry - fall through and re-fetch */ }
   }
-  if (!hasKey()) throw new LLMUnavailable('ANTHROPIC_API_KEY not set and no cache entry');
 
-  let res: any;
-  try {
-    res = await getClient().messages.create({
-      model: MODEL,
-      max_tokens: maxTokens,
-      thinking: { type: 'disabled' },
-      system,
-      messages: [{ role: 'user', content: user }],
-      output_config: { format: { type: 'json_schema', schema } },
-    } as any);
-  } catch (e: any) {
-    throw new LLMUnavailable('Anthropic call failed: ' + (e?.message ?? e));
-  }
-
-  if (res.stop_reason === 'refusal')
-    throw new LLMUnavailable('request was declined by safety classifiers');
-
-  const text = (res.content as any[]).find(b => b.type === 'text')?.text;
-  if (!text) throw new LLMUnavailable('empty response');
+  const p = provider();
+  if (p === 'none') throw new LLMUnavailable('no API key set (GEMINI_API_KEY or ANTHROPIC_API_KEY) and no cache entry');
 
   let data: T;
-  try { data = JSON.parse(text) as T; }
-  catch { throw new LLMUnavailable('response was not valid JSON'); }
+  try {
+    if (p === 'gemini') {
+      data = await callGemini<T>(system, user, schema);
+    } else {
+      data = await callAnthropic<T>(system, user, schema, maxTokens);
+    }
+  } catch (e: any) {
+    if (e instanceof LLMUnavailable) throw e;
+    throw new LLMUnavailable(`${p} call failed: ${e?.message ?? e}`);
+  }
 
   if (USE_CACHE) writeFileSync(file, JSON.stringify(data, null, 2));
   return { data, engine: 'llm' };
 }
 
-export const llmReady = () => hasKey();
+export const llmReady = () => hasGemini() || hasAnthropic();
+export const llmProvider = () => provider();
 
 /* ---------------- Prompt A - address extraction ---------------- */
 export const ADDRESS_SYSTEM = [

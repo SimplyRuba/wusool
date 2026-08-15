@@ -202,7 +202,7 @@ api.post('/simulate/neighbor', async (req, res) => {
 
 api.get('/health', (_req, res) => res.json({
   ok: true,
-  llm: process.env.ANTHROPIC_API_KEY ? 'configured' : 'offline (rule engine)',
+  llm: process.env.GEMINI_API_KEY ? 'gemini-2.5-flash' : process.env.ANTHROPIC_API_KEY ? 'claude-sonnet-5' : 'offline (rule engine)',
   checkpoints: listCheckpoints().length,
   entities: get<{ n: number }>('SELECT COUNT(*) AS n FROM entities')?.n ?? 0,
   addresses: get<{ n: number }>('SELECT COUNT(*) AS n FROM addresses')?.n ?? 0,

@@ -36,7 +36,10 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 const PORT = Number(process.env.PORT ?? 4000);
 app.listen(PORT, () => {
   console.log(`\n  wusool backend  ->  http://localhost:${PORT}`);
-  console.log(`  parser          ->  ${process.env.ANTHROPIC_API_KEY ? 'Anthropic + rule fallback' : 'rule engine (no API key set)'}`);
+  const llm = process.env.GEMINI_API_KEY ? 'Gemini 2.5 Flash (free) + rule fallback'
+    : process.env.ANTHROPIC_API_KEY ? 'Claude Sonnet 5 + rule fallback'
+    : 'rule engine (no API key set)';
+  console.log(`  parser          ->  ${llm}`);
   console.log(`  app             ->  http://localhost:${PORT}/`);
   console.log(`  health          ->  http://localhost:${PORT}/api/health\n`);
 });
