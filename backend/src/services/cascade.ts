@@ -5,6 +5,7 @@ import { haversine, weightedCentroid, spread, phoneHash, clamp, type Pt } from '
 import { extractAddress } from './parser.ts';
 import { matchOrCreateEntity, type Entity } from './entities.ts';
 import { findCity } from './rules.ts';
+import { enrichCadastral } from './cadastral.ts';
 
 /* Thresholds. NOTE the strict `>` on RESOLVED.
    Spec 01 section 4 said `>= 0.75`, but tier 3 with two landmarks scores
@@ -46,13 +47,26 @@ export async function resolve(input: ResolveInput): Promise<Resolution> {
     id: e.id, name: e.canonical_name, kind: e.kind, source: e.source, confidence: e.confidence,
   }));
 
-  const finish = (
+  const finish = async (
     tier: Tier, confidence: number, lat: number | null, lng: number | null,
     learned_from: number | null, official: Resolution['official'] = null,
     matchedAddressId: number | null = null,
-  ): Resolution => {
+  ): Promise<Resolution> => {
     const conf = clamp(confidence, 0.05, 0.99);
     const status = statusFor(conf);
+
+    // Cadastral enrichment: if we have coordinates but no official data,
+    // query the Ramallah Municipality GIS to fill neighborhood/parcel.
+    if (lat != null && lng != null && !official) {
+      try {
+        const cad = await enrichCadastral(lat, lng);
+        if (cad?.neighborhood || cad?.parcel) {
+          official = { neighborhood: cad.neighborhood ?? '', parcel: cad.parcel ?? '' };
+          explain.push(`cadastral: ${cad.neighborhood ?? ''}${cad.quarter ? ' / ' + cad.quarter : ''}${cad.street_address ? ' — ' + cad.street_address : ''}`);
+        }
+      } catch { /* GIS unreachable — continue without enrichment */ }
+    }
+
     const id = insert(
       `INSERT INTO resolutions
         (raw_text, phone_hash, parsed_json, engine, tier, matched_address_id,
@@ -78,7 +92,7 @@ export async function resolve(input: ResolveInput): Promise<Resolution> {
     }
     if (best && best.sim >= 0.85 && best.row.contradictions < 2) {
       explain.push(`tier 1: your own verified address, text similarity ${(best.sim * 100) | 0}%`);
-      return finish(1, 0.98, best.row.lat, best.row.lng, best.row.verified_count,
+      return await finish(1, 0.98, best.row.lat, best.row.lng, best.row.verified_count,
         best.row.official_neighborhood
           ? { neighborhood: best.row.official_neighborhood, parcel: best.row.official_parcel }
           : null,
@@ -98,7 +112,7 @@ export async function resolve(input: ResolveInput): Promise<Resolution> {
       `tier 2: building "${bldg.canonical_name}" is already on the map from ` +
       `${learnedFrom} prior ${learnedFrom === 1 ? 'delivery' : 'deliveries'} ` +
       `(entity confidence ${bldg.confidence.toFixed(2)} + 0.15)`);
-    return finish(2, conf, bldg.lat, bldg.lng, learnedFrom);
+    return await finish(2, conf, bldg.lat, bldg.lng, learnedFrom);
   }
 
   /* ---- TIER 3 — landmark triangulation ---- */
@@ -127,14 +141,14 @@ export async function resolve(input: ResolveInput): Promise<Resolution> {
       for (const a of amb)
         explain.push(`"${a.canonical_name}" matches ${a.ambiguous} places in this area — using the nearest (-0.12)`);
     }
-    return finish(3, conf, c.lat, c.lng, null);
+    return await finish(3, conf, c.lat, c.lng, null);
   }
 
   /* ---- TIER 4 — cold. City centroid at best, ask for a pin ---- */
   explain.push(city
     ? `tier 4: only the city "${city.ar}" is known — asking the customer to pin once`
     : 'tier 4: nothing recognised in this text — asking the customer to pin once');
-  return finish(4, 0.2, cityPt?.lat ?? null, cityPt?.lng ?? null, null);
+  return await finish(4, 0.2, cityPt?.lat ?? null, cityPt?.lng ?? null, null);
 }
 
 /** Straight-line distance between a resolution and a later ground truth, in metres. */

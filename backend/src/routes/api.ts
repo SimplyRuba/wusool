@@ -7,6 +7,7 @@ import type { DriverTask, Kpis, Order, Resolution } from '../contract.ts';
 import { all, get, insert, run } from '../db/index.ts';
 import { phoneHash } from '../lib/geo.ts';
 import { resolve } from '../services/cascade.ts';
+import { enrichCadastral } from '../services/cadastral.ts';
 import { onPinConfirmed, onDelivered, resolutionById } from '../services/verify.ts';
 import { extractRoadPost } from '../services/parser.ts';
 import { checkpointStates, matchCheckpoint, recordEvent, recentEvents, listCheckpoints } from '../services/roads.ts';
@@ -175,6 +176,14 @@ api.get('/dashboard/accuracy', (_req, res) => {
   if (!existsSync(f))
     return fail(res, 'not_measured', 'run `DB_PATH=/tmp/bench.db npm run bench` first', 404);
   res.json(JSON.parse(readFileSync(f, 'utf8')));
+});
+api.get('/dashboard/cadastral', async (req, res) => {
+  const lat = parseFloat(req.query.lat as string);
+  const lng = parseFloat(req.query.lng as string);
+  if (isNaN(lat) || isNaN(lng)) return fail(res, 'bad_request', 'lat and lng required');
+  const info = await enrichCadastral(lat, lng);
+  if (!info) return fail(res, 'not_found', 'no cadastral data at this location', 404);
+  res.json(info);
 });
 api.get('/dashboard/eval', (_req, res) => {
   const f = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed', 'eval-report.json');
