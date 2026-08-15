@@ -176,6 +176,12 @@ api.get('/dashboard/accuracy', (_req, res) => {
     return fail(res, 'not_measured', 'run `DB_PATH=/tmp/bench.db npm run bench` first', 404);
   res.json(JSON.parse(readFileSync(f, 'utf8')));
 });
+api.get('/dashboard/eval', (_req, res) => {
+  const f = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed', 'eval-report.json');
+  if (!existsSync(f))
+    return fail(res, 'not_run', 'run `npm run eval` first', 404);
+  res.json(JSON.parse(readFileSync(f, 'utf8')));
+});
 api.get('/points/:phone', (req, res) => res.json(balance(phoneHash(req.params.phone))));
 
 /* ------------------------------------------------- stage convenience ----- */

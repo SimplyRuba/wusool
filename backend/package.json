@@ -14,7 +14,8 @@
     "smoke": "node src/seed/smoke.ts",
     "osm": "node src/seed/fetch-osm.ts",
     "bench": "node src/seed/bench.ts",
-    "checkpoints": "node src/seed/verify-checkpoints.ts"
+    "checkpoints": "node src/seed/verify-checkpoints.ts",
+    "eval": "node src/seed/eval.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

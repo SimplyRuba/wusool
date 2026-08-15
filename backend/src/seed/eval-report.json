@@ -1,0 +1,303 @@
+{
+  "timestamp": "2026-08-15T02:18:18.972Z",
+  "note": "Ground truth is independently perturbed from stored coordinates; zero-error results are impossible by construction.",
+  "total_cases": 24,
+  "real_cases": 20,
+  "controls_total": 4,
+  "hit@100m": 0.6,
+  "hit@250m": 0.9,
+  "mean_error_m": 116,
+  "controls_correct": 1,
+  "tier_breakdown": {
+    "1": {
+      "count": 0,
+      "hit100": 0,
+      "hit250": 0,
+      "meanErr": 0
+    },
+    "2": {
+      "count": 11,
+      "hit100": 11,
+      "hit250": 11,
+      "meanErr": 36
+    },
+    "3": {
+      "count": 9,
+      "hit100": 1,
+      "hit250": 7,
+      "meanErr": 215
+    },
+    "4": {
+      "count": 4,
+      "hit100": 0,
+      "hit250": 0,
+      "meanErr": 0
+    }
+  },
+  "details": [
+    {
+      "label": "B01",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.7770199834136293,
+      "error_m": 28,
+      "perturbation_m": 29,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B02",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.7886327453656122,
+      "error_m": 60,
+      "perturbation_m": 60,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B03",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.8690004752948881,
+      "error_m": 42,
+      "perturbation_m": 42,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B04",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.7577021598350258,
+      "error_m": 24,
+      "perturbation_m": 24,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B05",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.8727394018089399,
+      "error_m": 55,
+      "perturbation_m": 56,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B06",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.7831793737597764,
+      "error_m": 37,
+      "perturbation_m": 38,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B07",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.9359537475276739,
+      "error_m": 19,
+      "perturbation_m": 20,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B08",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.95,
+      "error_m": 51,
+      "perturbation_m": 51,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B09",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.8322795261861757,
+      "error_m": 33,
+      "perturbation_m": 33,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B10",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.9124201137339697,
+      "error_m": 15,
+      "perturbation_m": 15,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "B11",
+      "category": "building",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 440,
+      "perturbation_m": 47,
+      "hit100": false,
+      "hit250": false
+    },
+    {
+      "label": "B12",
+      "category": "building",
+      "tier": 2,
+      "status": "resolved",
+      "confidence": 0.7846212525619195,
+      "error_m": 28,
+      "perturbation_m": 29,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "L01",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 200,
+      "perturbation_m": 200,
+      "hit100": false,
+      "hit250": true
+    },
+    {
+      "label": "L02",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 152,
+      "perturbation_m": 152,
+      "hit100": false,
+      "hit250": true
+    },
+    {
+      "label": "L03",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 104,
+      "perturbation_m": 104,
+      "hit100": false,
+      "hit250": true
+    },
+    {
+      "label": "L04",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 157,
+      "perturbation_m": 188,
+      "hit100": false,
+      "hit250": true
+    },
+    {
+      "label": "L05",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 140,
+      "perturbation_m": 140,
+      "hit100": false,
+      "hit250": true
+    },
+    {
+      "label": "L06",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 92,
+      "perturbation_m": 92,
+      "hit100": true,
+      "hit250": true
+    },
+    {
+      "label": "L07",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 176,
+      "perturbation_m": 176,
+      "hit100": false,
+      "hit250": true
+    },
+    {
+      "label": "L08",
+      "category": "landmark-cold",
+      "tier": 3,
+      "status": "estimated",
+      "confidence": 0.55,
+      "error_m": 471,
+      "perturbation_m": 128,
+      "hit100": false,
+      "hit250": false
+    },
+    {
+      "label": "C01",
+      "category": "control",
+      "tier": 4,
+      "status": "needs_pin",
+      "confidence": 0.2,
+      "error_m": null,
+      "perturbation_m": null,
+      "hit100": false,
+      "hit250": false
+    },
+    {
+      "label": "C02",
+      "category": "control",
+      "tier": 4,
+      "status": "needs_pin",
+      "confidence": 0.2,
+      "error_m": null,
+      "perturbation_m": null,
+      "hit100": false,
+      "hit250": false
+    },
+    {
+      "label": "C03",
+      "category": "control",
+      "tier": 4,
+      "status": "needs_pin",
+      "confidence": 0.2,
+      "error_m": null,
+      "perturbation_m": null,
+      "hit100": false,
+      "hit250": false
+    },
+    {
+      "label": "C04",
+      "category": "control",
+      "tier": 4,
+      "status": "needs_pin",
+      "confidence": 0.2,
+      "error_m": null,
+      "perturbation_m": null,
+      "hit100": false,
+      "hit250": false
+    }
+  ]
+}
