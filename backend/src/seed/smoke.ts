@@ -18,22 +18,40 @@ const post = async (p: string, body: unknown) => {
 const getJson = async (p: string) => (await fetch(BASE + p)).json() as any;
 
 console.log('\n=== PATH A — a cold address becomes a pinned one ===');
-const A_TEXT = 'رام الله، قرب مسجد جمال عبد الناصر، عمارة زيدان، الطابق الثالث، بجانب سوبر ماركت الأمل';
+/* The demo building is learned by the FIRST run, so a second run against the
+   same database correctly resolves it at tier 1/2 and the "cold address"
+   assertions fail — the product working, read as a regression. Each run picks
+   a customer and a building the graph has not seen yet, so `npm run smoke` is
+   repeatable without re-seeding. */
+const RUN = String(Date.now()).slice(-7);
+const PHONE_A = `0599${RUN}`;
+const PHONE_B = `0598${RUN}`;
+
+const FAMILIES = ['زيدان','بدران','الرجوب','دعيبس','زحايكة','عساف','الددو',
+                  'حجازي','بشناق','الترتير','صيام','خرّوب','عليان','سرحان'];
+let BUILDING = 'عمارة زيدان';
+for (const fam of FAMILIES) {
+  const probe = await post('/resolve', { raw_text: `رام الله، عمارة ${fam}` });
+  if (probe.tier !== 2) { BUILDING = `عمارة ${fam}`; break; }
+}
+
+const A_TEXT = `رام الله، قرب مسجد جمال عبد الناصر، ${BUILDING}، الطابق الثالث، بجانب سوبر ماركت الأمل`;
 
 const health = await getJson('/health');
 ok('server is up', health.ok === true, `parser: ${health.llm}`);
 ok('landmarks seeded', health.entities > 20, `${health.entities} entities`);
 
-const r1 = await post('/resolve', { raw_text: A_TEXT, phone: '0599111222' });
+const r1 = await post('/resolve', { raw_text: A_TEXT, phone: PHONE_A });
 ok('parsed the dialect address', !!r1.parsed?.city, `engine=${r1.engine} city=${r1.parsed?.city}`);
-ok('found the building', r1.parsed?.building?.includes('زيدان'), r1.parsed?.building ?? '');
+ok('found the building', !!r1.parsed?.building && BUILDING.includes(r1.parsed.building.trim()),
+   r1.parsed?.building ?? '');
 ok('extracted the floor', r1.parsed?.floor === '3', `floor=${r1.parsed?.floor}`);
 ok('tier 3 triangulation', r1.tier === 3, `tier=${r1.tier} conf=${r1.confidence?.toFixed(2)}`);
 ok('lands in the estimated band (so a pin is asked for)',
    r1.status === 'estimated' || r1.status === 'needs_pin', `status=${r1.status}`);
 
 const order = await post('/orders', {
-  items: [{ name: 'حذاء رياضي', qty: 1 }], phone: '0599111222', raw_address: A_TEXT,
+  items: [{ name: 'حذاء رياضي', qty: 1 }], phone: PHONE_A, raw_address: A_TEXT,
 });
 ok('order created', !!order.id, `#${order.id} status=${order.status}`);
 
@@ -50,8 +68,8 @@ if (order.pin_token) {
 }
 
 console.log('\n=== PATH B — the neighbour effect (the money shot) ===');
-const B_TEXT = 'البيرة عمارة زيدان جنب سوبرماركت الامل ط٢';
-const r2 = await post('/simulate/neighbor', { text: B_TEXT, phone: '0598777666' });
+const B_TEXT = `البيرة ${BUILDING} جنب سوبرماركت الامل ط٢`;
+const r2 = await post('/simulate/neighbor', { text: B_TEXT, phone: PHONE_B });
 ok('DIFFERENT wording + DIFFERENT phone resolves at tier 2',
    r2.tier === 2, `tier=${r2.tier} conf=${r2.confidence?.toFixed(2)} status=${r2.status}`);
 ok('badge has a prior-delivery count', (r2.learned_from ?? 0) >= 1, `learned_from=${r2.learned_from}`);
